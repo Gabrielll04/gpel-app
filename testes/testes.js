@@ -238,6 +238,27 @@ teste('estoque mínimo é preservado ao recalcular', () => {
   conferirIgual(linha['Estoque Mín.'], 40, 'mínimo preservado');
 });
 
+teste('ler o estoque não regrava a planilha (leitura é só cálculo)', () => {
+  const g = ambiente();
+  comprarPadrao(g);
+  g.gravarEstoqueAtual_([]); // esvazia a aba de propósito
+  const calculado = g.calcularEstoque();
+  conferir(calculado.length > 0, 'o cálculo devolve os itens');
+  conferirIgual(g.listar('ESTOQUE_ATUAL').length, 0, 'a aba continua sem ser regravada');
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'tudo' } }).getContent());
+  conferir(resposta.dados.ESTOQUE_ATUAL.length > 0, 'a carga do aplicativo traz o saldo');
+  conferirIgual(g.listar('ESTOQUE_ATUAL').length, 0, 'abrir o aplicativo não escreve na planilha');
+});
+
+teste('movimentar o estoque regrava a aba ESTOQUE_ATUAL', () => {
+  const g = ambiente();
+  g.gravarEstoqueAtual_([]);
+  comprarPadrao(g);
+  const linha = g.listar('ESTOQUE_ATUAL').filter((l) => l['Código'] === 'MP001')[0];
+  conferir(linha, 'item gravado na aba depois da movimentação');
+  conferirIgual(linha['Saldo Atual'], 100, 'saldo gravado');
+});
+
 teste('movimentação não pode ser alterada nem excluída', () => {
   const g = ambiente();
   comprarPadrao(g);

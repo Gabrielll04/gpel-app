@@ -51,8 +51,40 @@ vá em **Configurações**, cole a URL do Web App, informe seu nome e toque em *
 Para já entregar o aplicativo configurado para todo mundo, preencha `URL_API_PADRAO`
 em `web/js/config.js`.
 
-Publicando no GitHub Pages: Settings → Pages → Branch `main`, pasta `/root`; o endereço
-fica `https://<usuario>.github.io/gpel-app/web/`.
+### Onde hospedar
+
+O site tem 172 KB em 20 arquivos: qualquer hospedagem estática dá conta.
+
+**GitHub Pages:** Settings → Pages → Branch, pasta `/root`; o endereço fica
+`https://<usuario>.github.io/gpel-app/web/`.
+
+**Cloudflare Pages** (pelo painel, conectado ao GitHub):
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** →
+   aba **Pages** → **Connect to Git**.
+2. Autorize o GitHub e escolha o repositório `gpel-app`.
+3. Configure assim:
+   - *Production branch:* a branch onde está o código (ex.: `main`).
+   - *Framework preset:* **None**.
+   - *Build command:* **deixe vazio** (não existe build neste projeto).
+   - *Build output directory:* **`web`** ← é o único campo que costuma ser preenchido errado.
+4. **Save and Deploy**. Em cerca de um minuto sai um endereço
+   `https://gpel-app.pages.dev`. Cada push na branch de produção republica sozinho.
+5. Domínio próprio (opcional): aba **Custom domains** → **Set up a domain**.
+
+**Cloudflare Pages pela linha de comando**, sem conectar o GitHub:
+
+```bash
+npx wrangler pages deploy web --project-name=gpel-app
+```
+
+O arquivo `web/_headers` já vai com as regras de cache (HTML sempre revalidado, CSS e JS com
+cache curto). Como os arquivos não têm versão no nome, cache longo faria a usuária continuar
+vendo a versão antiga depois de uma correção.
+
+> **Importante:** trocar de hospedagem não muda o tempo de resposta do Apps Script.
+> Se o aplicativo estiver demorando para mostrar os dados, o problema está na planilha,
+> não no site — veja a seção *Se estiver lento*.
 
 ## 4. Antes de usar com dados de verdade
 
@@ -107,7 +139,44 @@ Não foram ligadas porque dependem de apontamento confiável, conforme combinado
 
 ---
 
-## 6. Organização do código
+## 6. Se estiver lento
+
+O aplicativo tem duas partes bem diferentes, e só uma costuma ser o problema:
+
+| Parte | Peso | Sinal |
+|---|---|---|
+| Site (HTML/CSS/JS) | 172 KB, uma vez só | Se a tela aparece rápido, está tudo bem aqui |
+| `?action=tudo` (Apps Script) | Onde a demora acontece | A tela abre mas os dados demoram |
+
+**Como saber onde está o tempo.** Toda resposta traz o campo `ms`: é o tempo gasto *dentro*
+do Apps Script. Abra a URL do Web App com `?action=tudo` no navegador e olhe o final do JSON.
+
+- `ms` alto (vários segundos) → é a planilha. Veja abaixo.
+- `ms` baixo mas a requisição demora → é a partida do script (o Apps Script "dorme" quando
+  fica sem uso) mais os dois saltos de rede: o `/exec` responde 302 e o conteúdo vem de
+  `script.googleusercontent.com`. Isso é do Google e não tem como remover.
+
+**O que já foi feito para acelerar:**
+
+- Abrir o aplicativo **não escreve mais na planilha**. Antes, cada abertura regravava a aba
+  `ESTOQUE_ATUAL` inteira só para mostrar o saldo — e escrever no Sheets custa segundos.
+  Agora a leitura só calcula; a gravação acontece quando o saldo muda.
+- Cada aba é lida **uma vez por requisição**, com cabeçalho e dados na mesma ida.
+  Antes a mesma aba era lida várias vezes (cada validação relia os cadastros inteiros).
+- Resultado medido numa carga com 30 pedidos e 30 compras:
+  **de 42 leituras e 2 escritas para 3 leituras e nenhuma escrita.**
+- O aplicativo guarda a última carga no próprio aparelho: da segunda vez em diante ele
+  **abre na hora** com os dados de antes e atualiza por trás, sem tela de espera.
+
+**Se ainda estiver lento** (planilha com muito histórico):
+
+1. Arquive o que é antigo: `MOV_ESTOQUE` e `VENDAS_HISTORICO` são as abas que crescem.
+   O aplicativo já traz só as últimas 500 movimentações, mas a leitura passa pela aba inteira.
+2. Apague abas e colunas vazias sobrando — o Sheets lê até a última célula usada.
+3. Confira se sobrou fórmula nas colunas calculadas: cada fórmula é recalculada a cada
+   gravação do script.
+
+## 7. Organização do código
 
 **Backend** (`apps-script/`)
 
@@ -145,18 +214,21 @@ pelo endereço `?action=meta`. Para acrescentar um campo, mexa em um lugar só.
 | `GET ?action=tudo` | Carga inicial (tudo de uma vez). |
 | `GET ?action=list&table=PEDIDOS` | Lista uma tabela. |
 | `GET ?action=historico&codigo=MP001` | Movimentações de um item. |
+| `POST {action:'recalcularEstoque'}` | Força a regravação da aba `ESTOQUE_ATUAL`. |
 | `POST {action:'criar', table, valores}` | Cria (gera o ID e dispara a automação da compra). |
 | `POST {action:'atualizar', table, id, valores}` | Edita. |
 | `POST {action:'excluir', table, id}` | Exclui (só cadastros que não estejam em uso). |
 | `POST {action:'estoqueMinimo', codigo, minimo}` | Define o estoque mínimo. |
 | `POST {action:'aprovarAjuste', id}` | Aprova o ajuste de um inventário. |
 
+Toda resposta traz `ok`, `dados` (ou `erro`) e `ms` — o tempo gasto dentro do Apps Script.
+
 O POST usa `Content-Type: text/plain` de propósito: assim o navegador não faz a requisição de
 verificação (preflight CORS), que o Apps Script não responde. O corpo continua sendo JSON.
 
 ---
 
-## 7. Testes
+## 8. Testes
 
 ```bash
 node testes/testes.js          # regras do backend (28 testes, sem precisar da planilha)
@@ -172,7 +244,7 @@ saindo da soma das movimentações, validações recusando dados inválidos.
 
 ---
 
-## 8. O que já está pronto
+## 9. O que já está pronto
 
 - Cadastros de produtos, insumos, clientes e fornecedores.
 - Pedidos com acompanhamento de situação até a entrega.

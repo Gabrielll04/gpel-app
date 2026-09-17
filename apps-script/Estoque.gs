@@ -36,10 +36,11 @@ function statusEstoque_(saldo, minimo) {
 }
 
 /**
- * Recalcula ESTOQUE_ATUAL a partir de MOV_ESTOQUE e regrava a aba.
- * Só "Estoque Mín." é preservado, porque é o único campo digitado pela usuária.
+ * Calcula o saldo de todos os itens a partir de MOV_ESTOQUE, em memória.
+ * NÃO escreve na planilha: é o caminho usado para LER o estoque.
+ * Ler é o que mais acontece, e gravar na planilha custa segundos.
  */
-function recalcularEstoque() {
+function calcularEstoque() {
   var movimentos = listar('MOV_ESTOQUE');
   var anteriores = {};
   listar('ESTOQUE_ATUAL').forEach(function (r) {
@@ -67,7 +68,7 @@ function recalcularEstoque() {
     acrescentar(textoLimpo_(m['Classe']) || 'Produto', m['Código Item'], textoLimpo_(m['Item']), textoLimpo_(m['Unidade']));
   });
 
-  var linhas = itens.map(function (item) {
+  return itens.map(function (item) {
     var totais = totaisDoItem_(movimentos, item.codigo);
     var minimo = Object.prototype.hasOwnProperty.call(anteriores, item.codigo) ? anteriores[item.codigo] : '';
     if (minimo !== '') minimo = paraNumero_(minimo);
@@ -83,17 +84,26 @@ function recalcularEstoque() {
       'Status': statusEstoque_(totais.saldo, minimo)
     };
   });
+}
 
+/**
+ * Calcula E regrava a aba ESTOQUE_ATUAL.
+ * Só é chamada quando o saldo muda (movimentação, compra, ajuste de inventário)
+ * ou quando alguém pede o recálculo manualmente.
+ */
+function recalcularEstoque() {
+  var linhas = calcularEstoque();
   gravarEstoqueAtual_(linhas);
   return linhas;
 }
 
 /** Regrava a aba ESTOQUE_ATUAL inteira com valores (nunca fórmulas). */
 function gravarEstoqueAtual_(linhas) {
-  var aba = abaDe('ESTOQUE_ATUAL');
+  var aba = garantirColunas_('ESTOQUE_ATUAL');
   var cabecalho = cabecalhoDe_(aba);
   var ultimaLinha = aba.getLastRow();
   if (ultimaLinha > 1) aba.getRange(2, 1, ultimaLinha - 1, Math.max(cabecalho.length, 1)).clearContent();
+  limparCache_('ESTOQUE_ATUAL');
   if (!linhas.length) return;
   var matriz = linhas.map(function (linha) {
     return cabecalho.map(function (coluna) {
@@ -102,12 +112,13 @@ function gravarEstoqueAtual_(linhas) {
     });
   });
   aba.getRange(2, 1, matriz.length, cabecalho.length).setValues(matriz);
+  limparCache_('ESTOQUE_ATUAL');
 }
 
 /** Define o estoque mínimo de um item (único campo digitável de ESTOQUE_ATUAL). */
 function definirEstoqueMinimo(codigo, minimo) {
   var alvo = textoLimpo_(codigo);
-  var aba = abaDe('ESTOQUE_ATUAL');
+  var aba = garantirColunas_('ESTOQUE_ATUAL');
   var cabecalho = cabecalhoDe_(aba);
   var registros = listar('ESTOQUE_ATUAL');
   var achado = null;
@@ -118,6 +129,7 @@ function definirEstoqueMinimo(codigo, minimo) {
   aba.getRange(achado._linha, cabecalho.indexOf('Estoque Mín.') + 1).setValue(valor);
   aba.getRange(achado._linha, cabecalho.indexOf('Status') + 1)
      .setValue(statusEstoque_(numeroOuZero_(achado['Saldo Atual']), valor));
+  limparCache_('ESTOQUE_ATUAL');
   return { 'Código': alvo, 'Estoque Mín.': valor };
 }
 
@@ -153,9 +165,10 @@ function gerarEntradaDaCompra_(compra, responsavel) {
     'Observações': 'Entrada automática - Compra / NF: ' + (textoLimpo_(compra['NF']) || 'sem NF')
   });
 
-  var aba = abaDe('COMPRAS');
+  var aba = garantirColunas_('COMPRAS');
   var cabecalho = cabecalhoDe_(aba);
   aba.getRange(compra._linha, cabecalho.indexOf('Mov. Gerado') + 1).setValue(movimento['ID Movimento']);
+  limparCache_('COMPRAS');
   compra['Mov. Gerado'] = movimento['ID Movimento'];
   return movimento;
 }
@@ -189,11 +202,12 @@ function aprovarAjusteInventario(idInventario, responsavel) {
   var contagem = numeroOuZero_(inventario['Contagem Física']);
   var diferenca = arredondar_(contagem - saldoAtual, 4);
 
-  var aba = abaDe('INVENTARIO');
+  var aba = garantirColunas_('INVENTARIO');
   var cabecalho = cabecalhoDe_(aba);
   aba.getRange(inventario._linha, cabecalho.indexOf('Saldo Sistema') + 1).setValue(saldoAtual);
   aba.getRange(inventario._linha, cabecalho.indexOf('Diferença') + 1).setValue(diferenca);
   aba.getRange(inventario._linha, cabecalho.indexOf('Ajuste?') + 1).setValue(diferenca !== 0 ? 'Sim' : 'Não');
+  limparCache_('INVENTARIO');
 
   if (diferenca === 0) throw new Error('Não há diferença entre a contagem e o saldo atual. Nenhum ajuste foi necessário.');
 

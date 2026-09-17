@@ -1,0 +1,16 @@
+# Regras de cache do Cloudflare Pages (o GitHub Pages ignora este arquivo).
+# Os arquivos não têm versão no nome, então o cache é curto e sempre revalidado:
+# assim uma correção publicada chega rápido no celular da usuária.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/index.html
+  Cache-Control: no-cache
+
+/css/*
+  Cache-Control: public, max-age=300, must-revalidate
+
+/js/*
+  Cache-Control: public, max-age=300, must-revalidate

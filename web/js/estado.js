@@ -8,18 +8,62 @@ GPEL.estado = (function () {
   var dados = {};
   var meta = null;
   var carregadoEm = null;
+  var CHAVE_CACHE = 'gpel.cache';
 
-  function carregar(forcar) {
+  function aplicar(resposta, quando) {
+    meta = resposta.meta;
+    dados = resposta;
+    carregadoEm = quando || new Date();
+    return dados;
+  }
+
+  /* A última carga fica guardada no próprio aparelho. Assim o aplicativo abre
+     mostrando os dados de antes (instantâneo) enquanto busca os novos por trás.
+     O cache é descartado se o endereço do servidor mudar. */
+  function lerCache() {
+    try {
+      var bruto = window.localStorage.getItem(CHAVE_CACHE);
+      if (!bruto) return null;
+      var guardado = JSON.parse(bruto);
+      if (!guardado || guardado.url !== GPEL.api.url() || !guardado.dados || !guardado.dados.meta) return null;
+      return guardado;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function gravarCache(resposta) {
+    try {
+      window.localStorage.setItem(CHAVE_CACHE, JSON.stringify({
+        url: GPEL.api.url(),
+        quando: new Date().toISOString(),
+        dados: resposta
+      }));
+    } catch (e) {
+      /* sem espaço ou sem armazenamento: o aplicativo funciona igual, só sem o atalho */
+    }
+  }
+
+  /** silencioso = busca por trás, sem a tela de "carregando". */
+  function carregar(forcar, silencioso) {
     if (!forcar && meta) return Promise.resolve(dados);
-    GPEL.ui.carregando(true);
+    if (!silencioso) GPEL.ui.carregando(true);
     return GPEL.api.carregarTudo()
       .then(function (resposta) {
-        meta = resposta.meta;
-        dados = resposta;
-        carregadoEm = new Date();
-        return dados;
+        gravarCache(resposta);
+        return aplicar(resposta);
       })
-      .finally(function () { GPEL.ui.carregando(false); });
+      .finally(function () { if (!silencioso) GPEL.ui.carregando(false); });
+  }
+
+  /**
+   * Abertura do aplicativo: devolve se havia dados guardados (já aplicados)
+   * e a promessa da busca ao servidor.
+   */
+  function iniciar() {
+    var guardado = lerCache();
+    if (guardado) aplicar(guardado.dados, new Date(guardado.quando));
+    return { temCache: !!guardado, promessa: carregar(true, !!guardado) };
   }
 
   /** Recarrega tudo e redesenha a tela atual. */
@@ -83,6 +127,7 @@ GPEL.estado = (function () {
 
   return {
     carregar: carregar,
+    iniciar: iniciar,
     atualizar: atualizar,
     tabela: tabela,
     definicao: definicao,

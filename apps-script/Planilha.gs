@@ -3,18 +3,29 @@
  * Nenhuma regra de negócio aqui: apenas ler, criar, atualizar e excluir linhas.
  */
 
+var _planilha = null;
+var _cacheAbas = {};
+var _colunasConferidas = {};
+
 /** Devolve a planilha configurada (ou a planilha ativa, se o script for vinculado a ela). */
 function abrirPlanilha() {
-  if (ID_PLANILHA) return SpreadsheetApp.openById(ID_PLANILHA);
-  var ativa = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ativa) throw new Error('Planilha não configurada. Preencha ID_PLANILHA em Config.gs.');
-  return ativa;
+  if (_planilha) return _planilha;
+  if (ID_PLANILHA) _planilha = SpreadsheetApp.openById(ID_PLANILHA);
+  else _planilha = SpreadsheetApp.getActiveSpreadsheet();
+  if (!_planilha) throw new Error('Planilha não configurada. Preencha ID_PLANILHA em Config.gs.');
+  return _planilha;
 }
 
-/** Garante que a aba existe e que o cabeçalho tem todas as colunas previstas. */
+/**
+ * Devolve a aba, criando-a se não existir.
+ * A conferência de colunas NÃO acontece aqui: ela custa uma ida à planilha e
+ * só faz falta na hora de gravar. Ler é o que mais acontece no dia a dia.
+ */
 function abaDe(nomeTabela) {
   var def = TABELAS[nomeTabela];
   if (!def) throw new Error('Tabela desconhecida: ' + nomeTabela);
+  if (_cacheAbas[nomeTabela]) return _cacheAbas[nomeTabela];
+
   var planilha = abrirPlanilha();
   var aba = planilha.getSheetByName(nomeTabela);
   if (!aba) {
@@ -25,9 +36,23 @@ function abaDe(nomeTabela) {
          .setFontWeight('bold');
       aba.setFrozenRows(1);
     }
+    _colunasConferidas[nomeTabela] = true;
+    _cacheAbas[nomeTabela] = aba;
     return aba;
   }
+  _cacheAbas[nomeTabela] = aba;
+  return aba;
+}
+
+/**
+ * Confere o cabeçalho antes de gravar: roda uma vez por aba em cada execução.
+ */
+function garantirColunas_(nomeTabela) {
+  var aba = abaDe(nomeTabela);
+  if (_colunasConferidas[nomeTabela]) return aba;
+  var def = TABELAS[nomeTabela];
   if (!def.colunasLivres) acrescentarColunasFaltantes_(aba, def);
+  _colunasConferidas[nomeTabela] = true;
   return aba;
 }
 
@@ -64,17 +89,30 @@ function valorParaJson_(valor) {
 }
 
 /**
- * Lê todas as linhas de uma tabela.
- * Cada registro vem com a coluna técnica _linha (número da linha na planilha).
+ * Cache de leitura, válido SOMENTE durante uma execução do script.
+ * Sem ele, uma única carga do aplicativo lê a mesma aba várias vezes
+ * (cada validação relê os cadastros; MOV_ESTOQUE é lida três vezes).
+ * Toda gravação limpa o cache da aba correspondente.
  */
-function listar(nomeTabela, opcoes) {
-  opcoes = opcoes || {};
+var _cacheTabelas = {};
+
+function limparCache_(nomeTabela) {
+  if (nomeTabela) delete _cacheTabelas[nomeTabela];
+  else _cacheTabelas = {};
+}
+
+/** Lê a aba inteira da planilha (sem cache), numa única ida. */
+function lerTudo_(nomeTabela) {
   var aba = abaDe(nomeTabela);
   var ultimaLinha = aba.getLastRow();
-  var cabecalho = cabecalhoDe_(aba);
-  if (ultimaLinha < 2 || !cabecalho.length) return [];
+  var ultimaColuna = aba.getLastColumn();
+  if (ultimaLinha < 2 || ultimaColuna < 1) return [];
 
-  var valores = aba.getRange(2, 1, ultimaLinha - 1, cabecalho.length).getValues();
+  // Cabeçalho e dados vêm juntos: duas idas à planilha viram uma.
+  var tudo = aba.getRange(1, 1, ultimaLinha, ultimaColuna).getValues();
+  var cabecalho = tudo[0].map(textoLimpo_);
+  var valores = tudo.slice(1);
+
   var registros = [];
   for (var i = 0; i < valores.length; i++) {
     var linha = valores[i];
@@ -86,6 +124,24 @@ function listar(nomeTabela, opcoes) {
     }
     registros.push(registro);
   }
+  return registros;
+}
+
+/**
+ * Lê todas as linhas de uma tabela.
+ * Cada registro vem com a coluna técnica _linha (número da linha na planilha).
+ */
+function listar(nomeTabela, opcoes) {
+  opcoes = opcoes || {};
+
+  if (!_cacheTabelas[nomeTabela]) _cacheTabelas[nomeTabela] = lerTudo_(nomeTabela);
+
+  // Cópia rasa: quem receber a lista pode alterá-la sem bagunçar o cache.
+  var registros = _cacheTabelas[nomeTabela].map(function (registro) {
+    var copia = {};
+    Object.keys(registro).forEach(function (chave) { copia[chave] = registro[chave]; });
+    return copia;
+  });
 
   if (opcoes.filtro) {
     Object.keys(opcoes.filtro).forEach(function (coluna) {
@@ -131,23 +187,25 @@ function objetoParaLinha_(cabecalho, registro, anterior) {
 
 /** Insere uma linha nova e devolve o registro gravado. */
 function inserirLinha(nomeTabela, registro) {
-  var aba = abaDe(nomeTabela);
+  var aba = garantirColunas_(nomeTabela);
   var cabecalho = cabecalhoDe_(aba);
   var numeroLinha = aba.getLastRow() + 1;
   formatarColunasTexto_(aba, cabecalho, numeroLinha);
   var linha = objetoParaLinha_(cabecalho, registro, null);
   aba.getRange(numeroLinha, 1, 1, cabecalho.length).setValues([linha]);
+  limparCache_(nomeTabela);
   registro._linha = numeroLinha;
   return registro;
 }
 
 /** Atualiza uma linha existente (identificada por _linha) e devolve o registro final. */
 function atualizarLinha(nomeTabela, numeroLinha, registro, anterior) {
-  var aba = abaDe(nomeTabela);
+  var aba = garantirColunas_(nomeTabela);
   var cabecalho = cabecalhoDe_(aba);
   formatarColunasTexto_(aba, cabecalho, numeroLinha);
   var linha = objetoParaLinha_(cabecalho, registro, anterior);
   aba.getRange(numeroLinha, 1, 1, cabecalho.length).setValues([linha]);
+  limparCache_(nomeTabela);
   var final = {};
   cabecalho.forEach(function (coluna, i) { if (coluna) final[coluna] = linha[i]; });
   final._linha = numeroLinha;
@@ -157,6 +215,7 @@ function atualizarLinha(nomeTabela, numeroLinha, registro, anterior) {
 /** Exclui uma linha (permitido apenas para cadastros). */
 function excluirLinha(nomeTabela, numeroLinha) {
   abaDe(nomeTabela).deleteRow(numeroLinha);
+  limparCache_(nomeTabela);
 }
 
 /** Mantém NF e códigos como texto, preservando zeros à esquerda. */

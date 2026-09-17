@@ -37,7 +37,8 @@ function doGet(e) {
         return carregarTudo_();
 
       case 'estoque':
-        return { registros: recalcularEstoque() };
+        // Leitura: calcula em memória, sem regravar a planilha.
+        return { registros: calcularEstoque() };
 
       case 'inventarios':
         return { registros: listarInventarios() };
@@ -201,7 +202,7 @@ function carregarTudo_() {
     PRODUCAO: listar('PRODUCAO'),
     COMPRAS: listar('COMPRAS'),
     INVENTARIO: listarInventarios(),
-    ESTOQUE_ATUAL: recalcularEstoque(),
+    ESTOQUE_ATUAL: calcularEstoque(),
     MOV_ESTOQUE: listar('MOV_ESTOQUE', { limite: 500 }),
     VENDAS_HISTORICO: listar('VENDAS_HISTORICO')
   };
@@ -224,12 +225,16 @@ function conferirToken_(token) {
 
 /** Envelopa a resposta em JSON, sempre com ok/erro. */
 function responder_(funcao) {
+  var comecou = Date.now();
   var saida;
   try {
     saida = { ok: true, dados: funcao() };
   } catch (erro) {
     saida = { ok: false, erro: erro && erro.message ? erro.message : String(erro) };
   }
+  // Tempo gasto DENTRO do Apps Script. Se estiver baixo e a requisição
+  // demorar, o gasto está na partida do script e na rede, não no código.
+  saida.ms = Date.now() - comecou;
   return ContentService
     .createTextOutput(JSON.stringify(saida))
     .setMimeType(ContentService.MimeType.JSON);
@@ -241,7 +246,7 @@ function responder_(funcao) {
 
 /** Cria as abas que faltarem e acerta os cabeçalhos, sem apagar nada. */
 function instalarPlanilha() {
-  Object.keys(TABELAS).forEach(function (nome) { abaDe(nome); });
+  Object.keys(TABELAS).forEach(function (nome) { garantirColunas_(nome); });
   recalcularEstoque();
   return 'Planilha preparada.';
 }

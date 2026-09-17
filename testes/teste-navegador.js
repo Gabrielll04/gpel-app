@@ -170,6 +170,24 @@ function popular(g) {
   const ajuste = g.listar('MOV_ESTOQUE').filter((m) => m['Origem'] === 'Inventário -');
   conferir(ajuste.length === 1, 'ajuste virou uma movimentação rastreável');
 
+  console.log('\nSegunda abertura (dados guardados no aparelho)');
+  const paginaLenta = await contexto.newPage();
+  paginaLenta.on('pageerror', (e) => erros.push('2a abertura: ' + e.message));
+  // servidor propositalmente lento: mostra se a tela aparece antes da resposta
+  await paginaLenta.route('**/exec*', async (rota) => {
+    await new Promise((r) => setTimeout(r, 2500));
+    const url = new URL(rota.request().url());
+    const parametros = {};
+    url.searchParams.forEach((valor, chave) => { parametros[chave] = valor; });
+    await rota.fulfill({ status: 200, contentType: 'application/json', body: g.doGet({ parameter: parametros }).getContent() });
+  });
+  const inicio = Date.now();
+  await paginaLenta.goto('http://localhost:' + PORTA + '/index.html#/estoque');
+  await paginaLenta.waitForSelector('#resultado-lista .cartao, table.tabela', { timeout: 2000 });
+  const demora = Date.now() - inicio;
+  conferir(demora < 2000, 'tela aparece na hora com os dados guardados (' + demora + ' ms, servidor levando 2500 ms)');
+  await paginaLenta.close();
+
   console.log('\nVisão de computador');
   const paginaGrande = await contexto.newPage();
   paginaGrande.on('pageerror', (e) => erros.push('desktop: ' + e.message));
