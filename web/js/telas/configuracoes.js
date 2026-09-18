@@ -31,6 +31,11 @@ GPEL.telas.configuracoes = (function () {
       var usuario = campo('Seu nome', GPEL.api.usuario(),
         'Usado como responsável nas movimentações de estoque.');
 
+      var marca = el('div', { class: 'cartao marca-completa' }, [
+        el('img', { src: 'img/gpel-logo.png', alt: 'GPEL', width: '420', height: '509' }),
+        el('span', { texto: 'Gestão de produção e estoque' })
+      ]);
+
       var situacao = el('div', { class: 'cartao' }, [
         el('div', { class: 'cartao__titulo', texto: 'Situação da conexão' }),
         el('div', { class: 'cartao__meta', id: 'situacao-conexao', texto: GPEL.api.configurada() ? 'Endereço configurado.' : 'Endereço ainda não informado.' })
@@ -79,7 +84,7 @@ GPEL.telas.configuracoes = (function () {
         ])
       ]);
 
-      return el('div', { class: 'formulario' }, [situacao, url.caixa, token.caixa, usuario.caixa, botoes, ajuda]);
+      return el('div', { class: 'formulario' }, [marca, situacao, url.caixa, token.caixa, usuario.caixa, botoes, ajuda]);
     }
   };
 })();

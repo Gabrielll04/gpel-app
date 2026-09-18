@@ -5,18 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#14564A">
   <title>GPEL</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2314564A'/><text x='50' y='68' font-size='52' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>G</text></svg>">
+  <link rel="icon" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-title" content="GPEL">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
   <div class="app">
     <aside class="lateral" id="lateral">
       <div class="marca">
-        <div class="marca__logo">G</div>
-        <div>
-          <strong>GPEL</strong>
-          <span>Gestão de produção e estoque</span>
-        </div>
+        <img class="marca__logo" src="img/gpel-marca.png" alt="GPEL" width="360" height="274">
+        <span class="marca__descricao">Gestão de produção e estoque</span>
       </div>
       <nav class="menu" id="menu-lateral"></nav>
       <div class="lateral__rodape">
@@ -28,6 +29,7 @@
     <div class="conteudo">
       <header class="cabecalho">
         <button class="icone-botao" id="botao-voltar" type="button" hidden aria-label="Voltar">‹</button>
+        <img class="cabecalho__marca" src="img/gpel-marca.png" alt="GPEL" width="360" height="274">
         <div class="cabecalho__titulo">
           <h1 id="titulo-tela">Início</h1>
           <p id="subtitulo-tela"></p>

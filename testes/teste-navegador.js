@@ -27,7 +27,7 @@ try {
 }
 
 const RAIZ = path.join(__dirname, '..', 'web');
-const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript' };
+const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const PORTA = 8099;
 
 let falhas = 0;
