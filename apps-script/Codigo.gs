@@ -12,14 +12,23 @@
  */
 
 function doGet(e) {
+  var parametros = (e && e.parameter) || {};
+
+  // Sem "action" é alguém abrindo o aplicativo no navegador: entrega a página.
+  // Com "action" é o aplicativo pedindo dados.
+  if (!parametros.action) return servirInterface_();
+
   return responder_(function () {
-    var p = (e && e.parameter) || {};
-    conferirToken_(p.token);
-    var acao = p.action || 'ping';
+    var p = parametros;
+    conferirAcesso_(p.token);
+    var acao = p.action;
 
     switch (acao) {
       case 'ping':
-        return { mensagem: 'API GPEL no ar', versao: '1.0' };
+        return { mensagem: 'API GPEL no ar', versao: '1.0', usuario: dadosDoUsuario_() };
+
+      case 'usuario':
+        return dadosDoUsuario_();
 
       case 'meta':
         return metaDados_();
@@ -58,17 +67,20 @@ function doPost(e) {
   return responder_(function () {
     var corpo = {};
     if (e && e.postData && e.postData.contents) corpo = JSON.parse(e.postData.contents);
-    conferirToken_(corpo.token);
+    conferirAcesso_(corpo.token);
+
+    // Quem assina a operação é a conta que fez login, não o que o aplicativo diz.
+    var responsavel = nomeDoUsuario() || corpo.usuario || '';
 
     var trava = LockService.getScriptLock();
     trava.waitLock(30000); // evita duas gravações simultâneas na mesma linha
     try {
       switch (corpo.action) {
-        case 'criar':      return criar_(corpo.table, corpo.valores || {}, corpo.usuario);
+        case 'criar':      return criar_(corpo.table, corpo.valores || {}, responsavel);
         case 'atualizar':  return atualizar_(corpo.table, corpo.id, corpo.valores || {});
         case 'excluir':    return excluir_(corpo.table, corpo.id);
         case 'estoqueMinimo':  return definirEstoqueMinimo(corpo.codigo, corpo.minimo);
-        case 'aprovarAjuste':  return aprovarAjusteInventario(corpo.id, corpo.usuario);
+        case 'aprovarAjuste':  return aprovarAjusteInventario(corpo.id, responsavel);
         case 'recalcularEstoque': return { registros: recalcularEstoque() };
         default: throw new Error('Ação desconhecida: ' + corpo.action);
       }
@@ -91,6 +103,12 @@ function criar_(nomeTabela, valores, usuario) {
   if (!def.idAutomatico && def.chave) {
     if (!textoLimpo_(valores[def.chave])) valores[def.chave] = gerarId(def.prefixoId);
     validarCodigoUnico_(nomeTabela, valores[def.chave], null);
+  }
+
+  // Responsável em branco é preenchido com quem está logado: rastreabilidade
+  // sem depender de a pessoa digitar o próprio nome.
+  if (usuario && !textoLimpo_(valores['Responsável']) && temCampo_(def, 'Responsável')) {
+    valores['Responsável'] = usuario;
   }
 
   var registro = prepararRegistro(nomeTabela, valores, null);
@@ -194,6 +212,7 @@ function metaDados_() {
 function carregarTudo_() {
   return {
     meta: metaDados_(),
+    usuario: dadosDoUsuario_(),
     CAD_PRODUTOS: listar('CAD_PRODUTOS'),
     CAD_INSUMOS: listar('CAD_INSUMOS'),
     CAD_CLIENTES: listar('CAD_CLIENTES'),
@@ -218,9 +237,9 @@ function limparTecnicos_(nomeTabela, registro) {
   return copia;
 }
 
-function conferirToken_(token) {
-  if (!TOKEN_ACESSO) return;
-  if (textoLimpo_(token) !== TOKEN_ACESSO) throw new Error('Acesso negado. Verifique a senha em Configurações.');
+/** A tabela tem essa coluna? */
+function temCampo_(def, nomeCampo) {
+  return (def.campos || []).some(function (campo) { return campo.nome === nomeCampo; });
 }
 
 /** Envelopa a resposta em JSON, sempre com ok/erro. */

@@ -18,9 +18,27 @@
 var ID_PLANILHA = ''; // ex.: '1AbCdEfGhIjKlMnOpQrStUvWxYz1234567890'
 
 /**
+ * QUEM PODE USAR O APLICATIVO.
+ *
+ * Escreva aqui os e-mails (contas Google) autorizados, em minúsculas.
+ * Quem abrir o aplicativo com outra conta recebe uma mensagem de acesso negado.
+ *
+ * Para acrescentar ou tirar alguém, mexa só nesta lista e publique uma nova
+ * versão do Web App. Não é preciso mudar mais nada no código.
+ *
+ * Lista vazia = qualquer pessoa que consiga abrir o Web App entra. Só deixe
+ * vazia se a publicação estiver como "Somente eu".
+ */
+var USUARIOS_AUTORIZADOS = [
+  // 'empresaria@gmail.com',
+  // 'gabrielggcarneiro04@gmail.com'
+];
+
+/**
  * Senha simples de acesso (opcional).
- * Se preenchida aqui, o aplicativo web precisa informar a mesma senha em Configurações.
- * Deixe vazio para liberar o acesso a quem tiver o link do Web App.
+ * Segunda camada, útil quando o aplicativo está hospedado fora (GitHub Pages,
+ * Cloudflare), onde o Google não consegue exigir login.
+ * Deixe vazio para não pedir senha.
  */
 var TOKEN_ACESSO = '';
 

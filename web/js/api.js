@@ -19,8 +19,16 @@ GPEL.api = (function () {
     return prefs.ler(cfg.CHAVE_USUARIO, '') || '';
   }
 
+  /* O aplicativo funciona de dois jeitos:
+     1. servido pelo próprio Apps Script (com login do Google) -> google.script.run;
+     2. hospedado fora (GitHub Pages, Cloudflare) -> fetch para a URL do Web App.
+     O resto do código não precisa saber qual dos dois está valendo. */
+  function dentroDoAppsScript() {
+    return typeof google !== 'undefined' && !!google.script && !!google.script.run;
+  }
+
   function configurada() {
-    return !!url();
+    return dentroDoAppsScript() || !!url();
   }
 
   function definirUrl(novaUrl) { prefs.gravar(cfg.CHAVE_URL, (novaUrl || '').trim()); }
@@ -33,21 +41,39 @@ GPEL.api = (function () {
     }
   }
 
+  function interpretar(texto) {
+    var dados;
+    try {
+      dados = JSON.parse(texto);
+    } catch (e) {
+      throw new Error('O servidor respondeu em um formato inesperado. Confira se a URL termina em /exec e se o acesso está liberado.');
+    }
+    if (!dados.ok) throw new Error(dados.erro || 'Não foi possível concluir a operação.');
+    return dados.dados;
+  }
+
   function tratarResposta(resposta) {
-    return resposta.text().then(function (texto) {
-      var dados;
-      try {
-        dados = JSON.parse(texto);
-      } catch (e) {
-        throw new Error('O servidor respondeu em um formato inesperado. Confira se a URL termina em /exec e se o acesso está liberado para "Qualquer pessoa".');
-      }
-      if (!dados.ok) throw new Error(dados.erro || 'Não foi possível concluir a operação.');
-      return dados.dados;
+    return resposta.text().then(interpretar);
+  }
+
+  /** Chamada pela ponte do Apps Script (quando a página é servida por ele). */
+  function pelaPonte(funcao, argumento) {
+    return new Promise(function (resolver, rejeitar) {
+      google.script.run
+        .withSuccessHandler(function (texto) {
+          try { resolver(interpretar(texto)); } catch (erro) { rejeitar(erro); }
+        })
+        .withFailureHandler(function (erro) {
+          rejeitar(new Error(erro && erro.message ? erro.message : 'Falha ao falar com o servidor.'));
+        })[funcao](argumento);
     });
   }
 
-  /** Leitura (GET). */
+  /** Leitura. */
   function buscar(parametros) {
+    if (dentroDoAppsScript()) {
+      return pelaPonte('apiGet', Object.assign({}, parametros, { token: token() }));
+    }
     exigirConfiguracao();
     var query = Object.keys(parametros)
       .filter(function (chave) { return parametros[chave] !== undefined && parametros[chave] !== null && parametros[chave] !== ''; })
@@ -62,8 +88,9 @@ GPEL.api = (function () {
      verificação (preflight) do navegador, que o Apps Script não responde.
      O corpo continua sendo JSON e é lido normalmente no doPost. */
   function enviar(corpo) {
-    exigirConfiguracao();
     corpo = Object.assign({}, corpo, { token: token(), usuario: corpo.usuario || usuario() });
+    if (dentroDoAppsScript()) return pelaPonte('apiPost', corpo);
+    exigirConfiguracao();
     return fetch(url(), {
       method: 'POST',
       redirect: 'follow',
@@ -73,7 +100,7 @@ GPEL.api = (function () {
   }
 
   return {
-    url: url, token: token, usuario: usuario, configurada: configurada,
+    url: url, token: token, usuario: usuario, configurada: configurada, dentroDoAppsScript: dentroDoAppsScript,
     definirUrl: definirUrl, definirToken: definirToken, definirUsuario: definirUsuario,
     buscar: buscar, enviar: enviar,
 

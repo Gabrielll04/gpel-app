@@ -340,6 +340,91 @@ teste('listarInventarios mostra quais ajustes já foram aprovados', () => {
   conferirIgual(g.listarInventarios()[0]._ajusteAprovado, true, 'aprovado depois da ação');
 });
 
+/* ------------------------------------------------------------- Acesso */
+
+console.log('\nControle de acesso');
+
+/** Ambiente com lista de e-mails autorizados ligada. */
+function ambienteComLista(autorizados) {
+  const g = ambiente();
+  g.USUARIOS_AUTORIZADOS.length = 0;
+  (autorizados || ['dona@gpel.com']).forEach((e) => g.USUARIOS_AUTORIZADOS.push(e));
+  return g;
+}
+
+teste('conta autorizada entra normalmente', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'tudo' } }).getContent());
+  conferir(resposta.ok, 'leitura liberada');
+  conferirIgual(resposta.dados.usuario.email, 'dona@gpel.com', 'e-mail identificado');
+});
+
+teste('conta de fora é recusada na leitura', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  g.__definirUsuario('estranho@outro.com');
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'tudo' } }).getContent());
+  conferirIgual(resposta.ok, false, 'leitura bloqueada');
+  conferir(resposta.erro.indexOf('não tem acesso') !== -1, 'mensagem explica o motivo');
+});
+
+teste('conta de fora é recusada na gravação', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  g.__definirUsuario('estranho@outro.com');
+  const antes = g.listar('CAD_CLIENTES').length;
+  const resposta = JSON.parse(g.doPost({ postData: { contents: JSON.stringify({
+    action: 'criar', table: 'CAD_CLIENTES', valores: { 'Código': 'X1', 'Razão Social': 'Invasor' }
+  }) } }).getContent());
+  conferirIgual(resposta.ok, false, 'gravação bloqueada');
+  conferirIgual(g.listar('CAD_CLIENTES').length, antes, 'nada foi gravado');
+});
+
+teste('maiúsculas e espaços no e-mail não barram a entrada', () => {
+  const g = ambienteComLista(['  Dona@GPEL.com ']);
+  g.__definirUsuario('dona@gpel.com');
+  conferirIgual(g.usuarioAutorizado(), true, 'comparação sem diferenciar caixa');
+});
+
+teste('a página do aplicativo não é servida para conta de fora', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  g.__definirUsuario('estranho@outro.com');
+  const pagina = g.doGet({ parameter: {} }).getContent();
+  conferir(pagina.indexOf('Acesso restrito') !== -1, 'mostra o aviso de acesso restrito');
+  conferir(pagina.indexOf('estranho@outro.com') !== -1, 'diz qual conta foi recusada');
+});
+
+teste('lista vazia mantém o comportamento antigo (a trava é a publicação)', () => {
+  const g = ambiente();
+  g.__definirUsuario('qualquer@pessoa.com');
+  conferirIgual(g.usuarioAutorizado(), true, 'sem lista, não bloqueia');
+});
+
+teste('a senha opcional continua valendo junto com o login', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  g.TOKEN_ACESSO = 'segredo';
+  let resposta = JSON.parse(g.doGet({ parameter: { action: 'ping' } }).getContent());
+  conferirIgual(resposta.ok, false, 'sem senha não passa');
+  resposta = JSON.parse(g.doGet({ parameter: { action: 'ping', token: 'segredo' } }).getContent());
+  conferirIgual(resposta.ok, true, 'com a senha certa passa');
+});
+
+teste('responsável em branco é preenchido com quem está logado', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  g.criar_('MOV_ESTOQUE', {
+    'Data': '2026-01-20', 'Classe': 'Insumo', 'Código Item': 'MP001',
+    'Entrada/Saída': 'Entrada', 'Origem': 'Devolução', 'Quantidade': 5
+  }, g.nomeDoUsuario());
+  conferirIgual(g.listar('MOV_ESTOQUE')[0]['Responsável'], 'dona', 'assinado por quem fez login');
+});
+
+teste('responsável digitado pela usuária é respeitado', () => {
+  const g = ambienteComLista(['dona@gpel.com']);
+  g.criar_('MOV_ESTOQUE', {
+    'Data': '2026-01-20', 'Classe': 'Insumo', 'Código Item': 'MP001',
+    'Entrada/Saída': 'Entrada', 'Origem': 'Devolução', 'Quantidade': 5, 'Responsável': 'Ana'
+  }, g.nomeDoUsuario());
+  conferirIgual(g.listar('MOV_ESTOQUE')[0]['Responsável'], 'Ana', 'nome informado prevalece');
+});
+
 /* ---------------------------------------------------------------- API */
 
 console.log('\nAPI');

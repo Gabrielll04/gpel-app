@@ -7,9 +7,11 @@
     var rotulo = document.getElementById('rotulo-sincronizacao');
     if (!rotulo) return;
     var quando = GPEL.estado.carregadoEm;
-    rotulo.textContent = quando
-      ? 'Atualizado às ' + quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      : '';
+    var partes = [];
+    var quem = GPEL.estado.dados && GPEL.estado.dados.usuario;
+    if (quem && quem.email) partes.push(quem.email);
+    if (quando) partes.push('atualizado às ' + quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    rotulo.textContent = partes.join(' · ');
   }
 
   /* Abre a tela o quanto antes: se houver dados guardados no aparelho, a

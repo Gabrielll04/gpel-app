@@ -4,7 +4,8 @@
   "description": "Aplicativo web de produção e estoque da GPEL, com Google Sheets como banco de dados.",
   "private": true,
   "scripts": {
-    "test": "node testes/testes.js",
-    "test:interface": "node testes/teste-navegador.js"
+    "test": "node testes/testes.js && node ferramentas/empacotar.js --conferir",
+    "test:interface": "node testes/teste-navegador.js",
+    "empacotar": "node ferramentas/empacotar.js"
   }
 }

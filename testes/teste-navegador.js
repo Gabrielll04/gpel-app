@@ -38,6 +38,13 @@ function conferir(condicao, mensagem) {
 
 function servir() {
   return http.createServer((req, res) => {
+    // /apps-script/Interface.html serve o arquivo empacotado (modo Apps Script)
+    if (req.url.split('?')[0] === '/interface-empacotada.html') {
+      const gerado = path.join(__dirname, '..', 'apps-script', 'Interface.html');
+      if (!fs.existsSync(gerado)) { res.writeHead(404); return res.end('rode: node ferramentas/empacotar.js'); }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(fs.readFileSync(gerado));
+    }
     const arquivo = path.join(RAIZ, req.url === '/' ? 'index.html' : req.url.split('?')[0]);
     if (!fs.existsSync(arquivo)) { res.writeHead(404); return res.end('não encontrado'); }
     res.writeHead(200, { 'Content-Type': TIPOS[path.extname(arquivo)] || 'text/plain' });
@@ -187,6 +194,58 @@ function popular(g) {
   const demora = Date.now() - inicio;
   conferir(demora < 2000, 'tela aparece na hora com os dados guardados (' + demora + ' ms, servidor levando 2500 ms)');
   await paginaLenta.close();
+
+  console.log('\nModo Apps Script (página empacotada + login do Google)');
+  const paginaGoogle = await contexto.newPage();
+  paginaGoogle.on('pageerror', (e) => erros.push('apps script: ' + e.message));
+  paginaGoogle.on('console', (m) => { if (m.type() === 'error') erros.push('apps script: ' + m.text()); });
+
+  // Faz o papel do google.script.run, que existe só dentro do Apps Script.
+  await paginaGoogle.exposeFunction('__chamarBackend', (funcao, argumento) => {
+    return funcao === 'apiPost'
+      ? g.doPost({ postData: { contents: JSON.stringify(argumento) } }).getContent()
+      : g.doGet({ parameter: argumento }).getContent();
+  });
+  await paginaGoogle.addInitScript(() => {
+    function construtor() {
+      let sucesso = null;
+      let falha = null;
+      const objeto = {
+        withSuccessHandler: (f) => { sucesso = f; return objeto; },
+        withFailureHandler: (f) => { falha = f; return objeto; },
+        apiGet: (p) => window.__chamarBackend('apiGet', p).then((r) => sucesso(r), (e) => falha && falha(e)),
+        apiPost: (c) => window.__chamarBackend('apiPost', c).then((r) => sucesso(r), (e) => falha && falha(e))
+      };
+      return objeto;
+    }
+    window.google = { script: { run: construtor() } };
+    // Sem URL guardada: nesse modo o aplicativo não precisa de endereço nenhum.
+    try { window.localStorage.clear(); } catch (e) {}
+  });
+
+  await paginaGoogle.goto('http://localhost:' + PORTA + '/interface-empacotada.html');
+  await paginaGoogle.waitForTimeout(900);
+  const conteudoGoogle = await paginaGoogle.textContent('#tela');
+  conferir(conteudoGoogle.indexOf('Configurações') === -1 && conteudoGoogle.length > 40,
+    'aplicativo carrega sem pedir endereço do servidor');
+
+  await paginaGoogle.click('#barra-inferior a[href="#/estoque"]');
+  await paginaGoogle.waitForTimeout(500);
+  conferir((await paginaGoogle.textContent('#titulo-tela')) === 'Estoque', 'navegação por link funciona dentro do quadro');
+
+  const pedidosAntes = g.listar('PEDIDOS').length;
+  await paginaGoogle.click('#barra-inferior a[href="#/pedidos"]');
+  await paginaGoogle.waitForTimeout(400);
+  await paginaGoogle.click('#acoes-tela button');
+  await paginaGoogle.waitForTimeout(250);
+  await paginaGoogle.selectOption('#campo-Cliente', 'CL001');
+  await paginaGoogle.selectOption('#campo-Produto', 'PA001');
+  await paginaGoogle.fill('#campo-Quantidade', '7');
+  await paginaGoogle.fill('[id="campo-Valor Unit."]', '2');
+  await paginaGoogle.click('.painel button[type=submit]');
+  await paginaGoogle.waitForTimeout(800);
+  conferir(g.listar('PEDIDOS').length === pedidosAntes + 1, 'gravação pela ponte google.script.run funciona');
+  await paginaGoogle.close();
 
   console.log('\nVisão de computador');
   const paginaGrande = await contexto.newPage();

@@ -30,23 +30,82 @@ opcional: o script usa a planilha em que está. Se for um projeto separado, pree
 
 1. Abra a planilha da GPEL → **Extensões → Apps Script**.
 2. Crie um arquivo para cada `.gs` da pasta `apps-script/` e cole o conteúdo
-   (`Config.gs`, `Planilha.gs`, `Regras.gs`, `Estoque.gs`, `Automacoes.gs`, `Codigo.gs`).
-3. Em `Config.gs`, preencha `ID_PLANILHA` se necessário. `TOKEN_ACESSO` é opcional
-   (senha simples pedida ao aplicativo).
-4. Execute uma vez a função **`instalarPlanilha`** e autorize o acesso. Ela cria as abas
+   (`Config.gs`, `Planilha.gs`, `Regras.gs`, `Acesso.gs`, `Estoque.gs`, `Automacoes.gs`,
+   `Interface.gs`, `Codigo.gs`).
+3. Crie um arquivo **HTML** chamado `Interface` e cole o conteúdo de
+   `apps-script/Interface.html` (é o aplicativo inteiro num arquivo só — veja a seção
+   *Publicar uma versão nova*).
+4. Em `Config.gs`, preencha `ID_PLANILHA` se necessário e escreva os e-mails autorizados em
+   `USUARIOS_AUTORIZADOS`.
+5. Execute uma vez a função **`instalarPlanilha`** e autorize o acesso. Ela cria as abas
    que faltarem e acerta os cabeçalhos — **não apaga nada do que já existe**.
-5. **Implantar → Nova implantação → Aplicativo da Web**:
-   - *Executar como:* **Eu**
-   - *Quem pode acessar:* **Qualquer pessoa**
-6. Copie a URL gerada (termina em `/exec`).
+6. **Implantar → Nova implantação → Aplicativo da Web**, com as opções da seção
+   *Quem pode entrar* logo abaixo.
+7. Copie a URL gerada (termina em `/exec`). É por ela que a usuária abre o aplicativo.
 
 > Sempre que alterar o código, faça **Implantar → Gerenciar implantações → editar → Nova versão**,
 > senão a URL continua servindo a versão antiga.
 
-## 3. Abrir o aplicativo
+## 3. Quem pode entrar
 
-Abra `web/index.html` (direto no navegador, num servidor simples ou no GitHub Pages),
-vá em **Configurações**, cole a URL do Web App, informe seu nome e toque em **Testar conexão**.
+O aplicativo tem duas formas de ser entregue, e elas mudam o que é possível em segurança.
+Não dá para ter as duas ao mesmo tempo: **um Web App que exige login não responde a
+chamadas vindas de outro site.**
+
+| | Servido pelo Apps Script | Hospedado fora (Pages/Cloudflare) |
+|---|---|---|
+| Publicação | Qualquer pessoa **com Conta do Google** | Qualquer pessoa (**anônimo**) |
+| Quem entra | Só os e-mails de `USUARIOS_AUTORIZADOS` | Quem tiver o link (e a senha, se houver) |
+| Se o link vazar | Nada acontece: sem login, não passa | Problema: o link é a chave |
+| Endereço | URL do Google (`.../exec`) | Seu domínio |
+
+### Configuração recomendada (login do Google)
+
+Na publicação do Web App:
+
+- *Executar como:* **Usuário que acessa o aplicativo da Web**
+- *Quem pode acessar:* **Qualquer pessoa com Conta do Google**
+
+E então:
+
+1. Em `Config.gs`, escreva os e-mails autorizados:
+   ```js
+   var USUARIOS_AUTORIZADOS = [
+     'empresaria@gmail.com',
+     'voce@gmail.com'
+   ];
+   ```
+2. **Compartilhe a planilha** com cada um desses e-mails como **Editor**. Com "executar como
+   usuário que acessa", cada pessoa lê e grava com a permissão dela — quem não tem acesso à
+   planilha não consegue usar o aplicativo nem por acidente.
+3. Mande para a usuária a URL que termina em `/exec`. No celular: abrir no Chrome →
+   menu → *Adicionar à tela inicial*.
+
+Quem abrir com outra conta vê uma tela dizendo que aquele e-mail não tem acesso, e
+**nenhum dado é devolvido** — a checagem acontece no servidor, em toda leitura e toda
+gravação, não só na tela.
+
+Para incluir ou tirar alguém: edite a lista, compartilhe (ou tire) o acesso à planilha e
+publique uma versão nova. Nada mais muda.
+
+### Por que o `Responsável` fica mais confiável
+
+Com login, quem assina a movimentação é a conta que entrou, não o nome digitado. O campo
+`Responsável` em branco é preenchido sozinho com o usuário da vez.
+
+### Senha (`TOKEN_ACESSO`)
+
+Continua existindo e funciona junto com o login. Ela é a única proteção possível quando o
+aplicativo está hospedado fora do Google — nesse caso, use também um repositório privado,
+já que a URL do Web App fica no código.
+
+## 4. Abrir o aplicativo
+
+**Servido pelo Apps Script (recomendado):** basta abrir a URL que termina em `/exec`. Não há
+endereço nem senha para configurar — o aplicativo reconhece a conta que fez login.
+
+**Hospedado fora:** abra `web/index.html` (no navegador, num servidor simples, no GitHub Pages
+ou no Cloudflare), vá em **Configurações**, cole a URL do Web App e toque em **Testar conexão**.
 
 Para já entregar o aplicativo configurado para todo mundo, preencha `URL_API_PADRAO`
 em `web/js/config.js`.
@@ -86,7 +145,7 @@ vendo a versão antiga depois de uma correção.
 > Se o aplicativo estiver demorando para mostrar os dados, o problema está na planilha,
 > não no site — veja a seção *Se estiver lento*.
 
-## 4. Antes de usar com dados de verdade
+## 5. Antes de usar com dados de verdade
 
 - **Tire as fórmulas das colunas calculadas da planilha.** Quem calcula agora é o código
   (`apps-script/Regras.gs` e `Estoque.gs`). Manter fórmula na planilha *e* cálculo no código
@@ -98,7 +157,7 @@ vendo a versão antiga depois de uma correção.
 
 ---
 
-## 5. Como o sistema funciona
+## 6. Como o sistema funciona
 
 ### Saldo de estoque
 
@@ -139,7 +198,7 @@ Não foram ligadas porque dependem de apontamento confiável, conforme combinado
 
 ---
 
-## 6. Se estiver lento
+## 7. Se estiver lento
 
 O aplicativo tem duas partes bem diferentes, e só uma costuma ser o problema:
 
@@ -176,13 +235,31 @@ do Apps Script. Abra a URL do Web App com `?action=tudo` no navegador e olhe o f
 3. Confira se sobrou fórmula nas colunas calculadas: cada fórmula é recalculada a cada
    gravação do script.
 
-## 7. Organização do código
+## 8. Publicar uma versão nova
+
+O aplicativo mora em `web/` (vários arquivos). O Apps Script serve **uma página só**, então
+existe um empacotador que junta tudo:
+
+```bash
+node ferramentas/empacotar.js     # gera apps-script/Interface.html
+```
+
+Depois, no editor do Apps Script: cole o conteúdo de `Interface.html` no arquivo `Interface`
+e faça **Implantar → Gerenciar implantações → editar → Nova versão**. A URL continua a mesma.
+
+`Interface.html` é gerado — não edite por lá, senão a mudança se perde na próxima geração.
+`npm test` avisa se ele estiver atrasado em relação a `web/`.
+
+## 9. Organização do código
 
 **Backend** (`apps-script/`)
 
 | Arquivo | Para que serve |
 |---|---|
-| `Config.gs` | Planilha, tabelas, colunas e listas fixas. Mexa aqui para acrescentar coluna ou opção. |
+| `Config.gs` | Planilha, tabelas, colunas, listas fixas e **quem pode entrar**. |
+| `Acesso.gs` | Identifica a conta logada e barra quem não está na lista. |
+| `Interface.gs` | Entrega a página do aplicativo e faz a ponte com ela. |
+| `Interface.html` | **Gerado** por `ferramentas/empacotar.js`. Não editar. |
 | `Planilha.gs` | Ler e gravar linhas. Sem regra de negócio. |
 | `Regras.gs` | Validação e **todos** os cálculos. |
 | `Estoque.gs` | Saldo, recálculo, movimentações, automação da compra e ajuste de inventário. |
@@ -194,7 +271,7 @@ do Apps Script. Abra a URL do Web App com `?action=tudo` no navegador e olhe o f
 | Arquivo | Para que serve |
 |---|---|
 | `config.js` | URL do servidor e preferências guardadas no aparelho. |
-| `api.js` | Conversa com o Apps Script. |
+| `api.js` | Conversa com o Apps Script, pelos dois caminhos: `google.script.run` quando a página é servida pelo Google, `fetch` quando está hospedada fora. |
 | `estado.js` | Guarda em memória o que veio do servidor. |
 | `ui.js` | Peças visuais: cartões, selos, tabelas, avisos, painéis, formatação. |
 | `formulario.js` | Monta formulários a partir da definição das tabelas. |
@@ -228,10 +305,11 @@ verificação (preflight CORS), que o Apps Script não responde. O corpo continu
 
 ---
 
-## 8. Testes
+## 10. Testes
 
 ```bash
-node testes/testes.js          # regras do backend (28 testes, sem precisar da planilha)
+npm test                       # regras do backend + conferência do pacote
+node testes/testes.js          # só as regras do backend (39 testes, sem precisar da planilha)
 npm install -D playwright      # só para o teste de interface
 node testes/teste-navegador.js # abre o aplicativo num navegador com o backend simulado
 ```
@@ -240,11 +318,16 @@ Os testes cobrem inclusão, edição, erro e repetição das automações: compr
 entrada, edição de compra não duplicando, ajuste de inventário aprovado uma vez só, saldo
 saindo da soma das movimentações, validações recusando dados inválidos.
 
+O controle de acesso também é testado: conta de fora barrada na leitura e na gravação,
+página do aplicativo não entregue para quem não está na lista, senha valendo junto com o
+login e `Responsável` assinado pela conta que entrou. O teste de interface roda o aplicativo
+nos dois modos — hospedado fora e servido pelo Apps Script (com a ponte simulada).
+
 `testes/simulador.js` imita o Google Apps Script no computador; não vai para produção.
 
 ---
 
-## 9. O que já está pronto
+## 11. O que já está pronto
 
 - Cadastros de produtos, insumos, clientes e fornecedores.
 - Pedidos com acompanhamento de situação até a entrega.

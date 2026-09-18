@@ -22,19 +22,49 @@ GPEL.telas.configuracoes = (function () {
 
   return {
     titulo: 'Configurações',
-    subtitulo: 'Conexão com a planilha e identificação',
+    subtitulo: 'Sua conta e o acesso ao aplicativo',
     render: function () {
+      var marcaApenas = el('div', { class: 'cartao marca-completa' }, [
+        el('img', { src: 'img/gpel-logo.png', alt: 'GPEL', width: '420', height: '509' }),
+        el('span', { texto: 'Gestão de produção e estoque' })
+      ]);
+
+      /* Servido pelo Apps Script, não há endereço nem senha para configurar:
+         quem identifica a pessoa é o login do Google. */
+      if (GPEL.api.dentroDoAppsScript()) {
+        var quem = (GPEL.estado.dados && GPEL.estado.dados.usuario) || {};
+        return el('div', { class: 'formulario' }, [
+          marcaApenas,
+          el('div', { class: 'cartao' }, [
+            el('div', { class: 'cartao__titulo', texto: 'Sua conta' }),
+            el('div', { class: 'cartao__linhas' }, [
+              el('div', { class: 'cartao__linha' }, [
+                el('span', { texto: 'Conectada como' }),
+                el('span', { texto: quem.email || 'conta Google' })
+              ]),
+              el('div', { class: 'cartao__linha' }, [
+                el('span', { texto: 'Acesso' }),
+                el('span', {}, [ui.selo(quem.listaAtiva ? 'restrito por e-mail' : 'liberado', quem.listaAtiva ? 'ok' : 'atencao')])
+              ])
+            ]),
+            el('div', { class: 'campo__ajuda', style: 'margin-top:10px', texto: quem.listaAtiva
+              ? 'Só os e-mails autorizados abrem este aplicativo. Suas movimentações são assinadas com esta conta.'
+              : 'Nenhuma lista de e-mails foi definida no Apps Script: quem conseguir abrir o endereço entra.' })
+          ]),
+          el('div', { class: 'cartao' }, [
+            el('div', { class: 'cartao__titulo', texto: 'Quem pode usar o aplicativo' }),
+            el('p', { class: 'campo__ajuda', style: 'margin-top:8px', texto:
+              'Para incluir ou tirar alguém: abra a planilha, Extensões > Apps Script, edite a lista USUARIOS_AUTORIZADOS em Config.gs, compartilhe a planilha com o novo e-mail e publique uma nova versão do aplicativo.' })
+          ])
+        ]);
+      }
+
       var url = campo('Endereço do aplicativo (Web App)', GPEL.api.url(),
         'Cole aqui a URL que termina em /exec, gerada ao publicar o Apps Script.', 'url');
       var token = campo('Senha de acesso', GPEL.api.token(),
         'Só é necessária se você preencheu TOKEN_ACESSO no Apps Script.', 'password');
       var usuario = campo('Seu nome', GPEL.api.usuario(),
         'Usado como responsável nas movimentações de estoque.');
-
-      var marca = el('div', { class: 'cartao marca-completa' }, [
-        el('img', { src: 'img/gpel-logo.png', alt: 'GPEL', width: '420', height: '509' }),
-        el('span', { texto: 'Gestão de produção e estoque' })
-      ]);
 
       var situacao = el('div', { class: 'cartao' }, [
         el('div', { class: 'cartao__titulo', texto: 'Situação da conexão' }),
@@ -84,7 +114,7 @@ GPEL.telas.configuracoes = (function () {
         ])
       ]);
 
-      return el('div', { class: 'formulario' }, [marca, situacao, url.caixa, token.caixa, usuario.caixa, botoes, ajuda]);
+      return el('div', { class: 'formulario' }, [marcaApenas, situacao, url.caixa, token.caixa, usuario.caixa, botoes, ajuda]);
     }
   };
 })();

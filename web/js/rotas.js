@@ -131,7 +131,22 @@ GPEL.rotas = (function () {
     desenhar();
   }
 
+  /* Servido pelo Apps Script, o aplicativo roda dentro de um quadro (iframe).
+     Tratar o clique por conta própria faz a navegação se comportar igual nos
+     dois modos, hospedado fora ou dentro do Google. */
+  function aoClicarEmLink(evento) {
+    var alvo = evento.target;
+    while (alvo && alvo.tagName !== 'A') alvo = alvo.parentNode;
+    if (!alvo) return;
+    var destino = alvo.getAttribute('href') || '';
+    if (destino.indexOf('#/') !== 0) return;
+    evento.preventDefault();
+    if (window.location.hash === destino) aoMudarEndereco();
+    else window.location.hash = destino;
+  }
+
   function iniciar() {
+    document.addEventListener('click', aoClicarEmLink);
     window.addEventListener('hashchange', aoMudarEndereco);
     document.getElementById('botao-menu').addEventListener('click', abrirMenuSecundario);
     document.getElementById('botao-voltar').addEventListener('click', function () { window.history.back(); });

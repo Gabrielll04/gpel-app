@@ -92,6 +92,16 @@ function criarPlanilhaFalsa() {
   };
 }
 
+function criarSaidaHtml(html) {
+  const saida = {
+    getContent: () => html,
+    setTitle: () => saida,
+    addMetaTag: () => saida,
+    setXFrameOptionsMode: () => saida
+  };
+  return saida;
+}
+
 function formatarData(data, fuso, formato) {
   const ano = data.getFullYear();
   const mes = String(data.getMonth() + 1).padStart(2, '0');
@@ -103,8 +113,21 @@ function formatarData(data, fuso, formato) {
 function carregarBackend() {
   const planilha = criarPlanilhaFalsa();
 
+  // Conta "logada" nos testes. Trocar com contexto.__definirUsuario('...').
+  let usuarioAtual = 'dona@gpel.com';
+
   const contexto = {
     console,
+    __definirUsuario: (email) => { usuarioAtual = email; },
+    Session: {
+      getEffectiveUser: () => ({ getEmail: () => usuarioAtual }),
+      getActiveUser: () => ({ getEmail: () => usuarioAtual })
+    },
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+      createHtmlOutput: (html) => criarSaidaHtml(html),
+      createHtmlOutputFromFile: (nome) => criarSaidaHtml('<!-- arquivo ' + nome + ' -->')
+    },
     SpreadsheetApp: {
       openById: () => planilha,
       getActiveSpreadsheet: () => planilha
@@ -128,8 +151,10 @@ function carregarBackend() {
   contexto.globalThis = contexto;
   vm.createContext(contexto);
 
+  // Carrega todos os .gs da pasta (Config primeiro: os outros usam suas listas).
   const pasta = path.join(__dirname, '..', 'apps-script');
-  ['Config.gs', 'Planilha.gs', 'Regras.gs', 'Estoque.gs', 'Automacoes.gs', 'Codigo.gs'].forEach((arquivo) => {
+  const arquivos = fs.readdirSync(pasta).filter((a) => a.endsWith('.gs')).sort();
+  ['Config.gs'].concat(arquivos.filter((a) => a !== 'Config.gs')).forEach((arquivo) => {
     vm.runInContext(fs.readFileSync(path.join(pasta, arquivo), 'utf8'), contexto, { filename: arquivo });
   });
 
