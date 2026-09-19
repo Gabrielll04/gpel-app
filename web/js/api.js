@@ -56,6 +56,26 @@ GPEL.api = (function () {
     return resposta.text().then(interpretar);
   }
 
+  /* Quando o Web App passa a exigir login, o Google responde com um desvio para
+     a tela de login — sem cabeçalho de CORS. O navegador mostra só "Failed to
+     fetch", que não diz nada para quem está usando. Aqui isso vira um erro com
+     explicação e com o caminho da solução. */
+  function erroDeConexao() {
+    var erro = new Error(
+      'Este endereço não consegue mais falar com a planilha. O aplicativo agora pede login ' +
+      'do Google, e o login só funciona abrindo o endereço do próprio Google.');
+    erro.precisaAbrirNoGoogle = true;
+    return erro;
+  }
+
+  function comTratamentoDeRede(promessa) {
+    return promessa.catch(function (erro) {
+      // TypeError é a falha de rede/CORS do fetch; os demais erros são do servidor.
+      if (erro instanceof TypeError) throw erroDeConexao();
+      throw erro;
+    });
+  }
+
   /** Chamada pela ponte do Apps Script (quando a página é servida por ele). */
   function pelaPonte(funcao, argumento) {
     return new Promise(function (resolver, rejeitar) {
@@ -79,8 +99,9 @@ GPEL.api = (function () {
       .filter(function (chave) { return parametros[chave] !== undefined && parametros[chave] !== null && parametros[chave] !== ''; })
       .map(function (chave) { return encodeURIComponent(chave) + '=' + encodeURIComponent(parametros[chave]); });
     if (token()) query.push('token=' + encodeURIComponent(token()));
-    return fetch(url() + '?' + query.join('&'), { method: 'GET', redirect: 'follow' })
-      .then(tratarResposta);
+    return comTratamentoDeRede(
+      fetch(url() + '?' + query.join('&'), { method: 'GET', redirect: 'follow' })
+    ).then(tratarResposta);
   }
 
   /** Gravação (POST).
@@ -91,12 +112,12 @@ GPEL.api = (function () {
     corpo = Object.assign({}, corpo, { token: token(), usuario: corpo.usuario || usuario() });
     if (dentroDoAppsScript()) return pelaPonte('apiPost', corpo);
     exigirConfiguracao();
-    return fetch(url(), {
+    return comTratamentoDeRede(fetch(url(), {
       method: 'POST',
       redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(corpo)
-    }).then(tratarResposta);
+    })).then(tratarResposta);
   }
 
   return {

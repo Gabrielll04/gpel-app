@@ -165,6 +165,17 @@ GPEL.ui = (function () {
     ]);
   }
 
+  /* Bloco da marca. Fica num lugar só: no pacote do Apps Script a imagem vira
+     texto embutido, e repeti-la engordaria o arquivo a cada uso. */
+  var CAMINHO_LOGO = 'img/gpel-logo.png';
+
+  function marca(descricao) {
+    return el('div', { class: 'cartao marca-completa' }, [
+      el('img', { src: CAMINHO_LOGO, alt: 'GPEL', width: '420', height: '509' }),
+      el('span', { texto: descricao || 'Gestão de produção e estoque' })
+    ]);
+  }
+
   function vazio(mensagem) {
     return el('div', { class: 'cartao cartao--vazio' }, [el('p', { texto: mensagem })]);
   }
@@ -249,6 +260,6 @@ GPEL.ui = (function () {
   return {
     el: el, limpar: limpar, numero: numero, dinheiro: dinheiro, data: data, hoje: hoje, diasEntre: diasEntre,
     aviso: aviso, carregando: carregando, abrirPainel: abrirPainel, fecharPainel: fecharPainel, confirmar: confirmar,
-    selo: selo, indicador: indicador, vazio: vazio, cartao: cartao, tabela: tabela, linhaDetalhe: linhaDetalhe, icone: icone
+    selo: selo, indicador: indicador, vazio: vazio, marca: marca, cartao: cartao, tabela: tabela, linhaDetalhe: linhaDetalhe, icone: icone
   };
 })();

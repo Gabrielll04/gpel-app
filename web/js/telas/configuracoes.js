@@ -24,10 +24,7 @@ GPEL.telas.configuracoes = (function () {
     titulo: 'Configurações',
     subtitulo: 'Sua conta e o acesso ao aplicativo',
     render: function () {
-      var marcaApenas = el('div', { class: 'cartao marca-completa' }, [
-        el('img', { src: 'img/gpel-logo.png', alt: 'GPEL', width: '420', height: '509' }),
-        el('span', { texto: 'Gestão de produção e estoque' })
-      ]);
+      var marcaApenas = ui.marca();
 
       /* Servido pelo Apps Script, não há endereço nem senha para configurar:
          quem identifica a pessoa é o login do Google. */

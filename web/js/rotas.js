@@ -104,10 +104,7 @@ GPEL.rotas = (function () {
     var area = ui.limpar(document.getElementById('tela'));
 
     if (!GPEL.api.configurada() && atual.rota !== 'configuracoes') {
-      area.appendChild(el('div', { class: 'cartao marca-completa' }, [
-        el('img', { src: 'img/gpel-logo.png', alt: 'GPEL', width: '420', height: '509' }),
-        el('span', { texto: 'Gestão de produção e estoque' })
-      ]));
+      area.appendChild(ui.marca());
       area.appendChild(el('div', { class: 'aviso-configuracao' }, [
         el('strong', { texto: 'Falta conectar o aplicativo à planilha. ' }),
         el('span', { texto: 'Abra Configurações e informe o endereço publicado no Apps Script.' })

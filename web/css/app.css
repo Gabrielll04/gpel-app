@@ -178,6 +178,7 @@ button { font: inherit; }
   background: var(--verde);
   color: #fff;
   cursor: pointer;
+  text-decoration: none; /* o botão também é usado como link */
 }
 .botao:active { transform: scale(.985); }
 .botao[disabled] { opacity: .5; cursor: not-allowed; }

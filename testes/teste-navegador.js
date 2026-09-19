@@ -195,6 +195,22 @@ function popular(g) {
   conferir(demora < 2000, 'tela aparece na hora com os dados guardados (' + demora + ' ms, servidor levando 2500 ms)');
   await paginaLenta.close();
 
+  console.log('\nEndereço antigo depois de restringir o acesso');
+  const paginaBloqueada = await contexto.newPage();
+  paginaBloqueada.on('pageerror', (e) => erros.push('bloqueada: ' + e.message));
+  // O Google responde com desvio para o login: para o navegador, é falha de CORS.
+  await paginaBloqueada.route('**/exec*', (rota) => rota.abort('failed'));
+  await paginaBloqueada.addInitScript(() => { try { window.localStorage.removeItem('gpel.cache'); } catch (e) {} });
+  await paginaBloqueada.goto('http://localhost:' + PORTA + '/index.html#/inicio');
+  await paginaBloqueada.waitForTimeout(900);
+  const textoBloqueado = await paginaBloqueada.textContent('#tela');
+  conferir(textoBloqueado.indexOf('login com a sua conta Google') !== -1,
+    'explica que o aplicativo mudou de endereço, em vez de "Failed to fetch"');
+  const botao = paginaBloqueada.locator('#tela a.botao');
+  conferir(await botao.count() === 1 && (await botao.getAttribute('href')).indexOf('/exec') !== -1,
+    'oferece o botão que leva ao endereço do Google');
+  await paginaBloqueada.close();
+
   console.log('\nModo Apps Script (página empacotada + login do Google)');
   const paginaGoogle = await contexto.newPage();
   paginaGoogle.on('pageerror', (e) => erros.push('apps script: ' + e.message));

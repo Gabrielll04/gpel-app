@@ -250,7 +250,36 @@ e faça **Implantar → Gerenciar implantações → editar → Nova versão**. 
 `Interface.html` é gerado — não edite por lá, senão a mudança se perde na próxima geração.
 `npm test` avisa se ele estiver atrasado em relação a `web/`.
 
-## 9. Organização do código
+## 9. Quando algo dá errado
+
+**"has been blocked by CORS policy" no endereço do GitHub Pages / Cloudflare.**
+É o esperado depois de restringir o acesso a contas Google: o Google responde com um desvio
+para a tela de login, que não traz cabeçalho de CORS. Um site de fora não consegue fazer login
+por você. Abra o aplicativo pela URL que termina em `/exec`. Quem tiver o atalho antigo no
+celular vê uma tela explicando isso, com um botão que leva ao endereço certo.
+
+**"No HTML file named Interface was found" ao abrir a URL `/exec`.**
+Falta criar o arquivo HTML `Interface` no projeto do Apps Script. Rode
+`node ferramentas/empacotar.js`, crie um arquivo **HTML** chamado `Interface` no editor e cole
+o conteúdo de `apps-script/Interface.html`.
+
+**A página abre, mas diz "Acesso restrito".**
+A conta que fez login não está em `USUARIOS_AUTORIZADOS`. A tela mostra qual e-mail foi
+recusado. Se você usa mais de uma conta Google no navegador, veja se entrou com a certa.
+
+**"Você não tem permissão para acessar a planilha" ou erro ao gravar.**
+Com *Executar como: Usuário que acessa o aplicativo*, cada pessoa usa a própria permissão.
+Compartilhe a planilha como **Editor** com cada e-mail autorizado.
+
+**Mudei o código e nada mudou.**
+Toda alteração exige **Implantar → Gerenciar implantações → editar → Nova versão**. Se mexeu
+em algo de `web/`, rode antes `node ferramentas/empacotar.js` e cole o `Interface.html` novo.
+
+**Criei uma implantação nova e a URL mudou.**
+Prefira *editar* a implantação existente: assim a URL continua a mesma e ninguém precisa
+trocar o atalho.
+
+## 10. Organização do código
 
 **Backend** (`apps-script/`)
 
@@ -305,7 +334,7 @@ verificação (preflight CORS), que o Apps Script não responde. O corpo continu
 
 ---
 
-## 10. Testes
+## 11. Testes
 
 ```bash
 npm test                       # regras do backend + conferência do pacote
@@ -327,7 +356,7 @@ nos dois modos — hospedado fora e servido pelo Apps Script (com a ponte simula
 
 ---
 
-## 11. O que já está pronto
+## 12. O que já está pronto
 
 - Cadastros de produtos, insumos, clientes e fornecedores.
 - Pedidos com acompanhamento de situação até a entrega.
