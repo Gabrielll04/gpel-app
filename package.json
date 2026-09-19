@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node testes/testes.js && node ferramentas/empacotar.js --conferir",
     "test:interface": "node testes/teste-navegador.js",
-    "empacotar": "node ferramentas/empacotar.js"
+    "empacotar": "node ferramentas/empacotar.js",
+    "publicar": "node ferramentas/empacotar.js && npx --yes @google/clasp push --force"
   }
 }

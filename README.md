@@ -238,17 +238,49 @@ do Apps Script. Abra a URL do Web App com `?action=tudo` no navegador e olhe o f
 ## 8. Publicar uma versão nova
 
 O aplicativo mora em `web/` (vários arquivos). O Apps Script serve **uma página só**, então
-existe um empacotador que junta tudo:
+existe um empacotador que junta tudo num arquivo:
 
 ```bash
 node ferramentas/empacotar.js     # gera apps-script/Interface.html
 ```
 
-Depois, no editor do Apps Script: cole o conteúdo de `Interface.html` no arquivo `Interface`
-e faça **Implantar → Gerenciar implantações → editar → Nova versão**. A URL continua a mesma.
-
 `Interface.html` é gerado — não edite por lá, senão a mudança se perde na próxima geração.
 `npm test` avisa se ele estiver atrasado em relação a `web/`.
+
+A partir daí há dois caminhos para levar isso até o Google.
+
+### Caminho curto: um comando (clasp)
+
+O `clasp` é a ferramenta oficial do Google para enviar código ao Apps Script. Configura-se
+uma vez:
+
+```bash
+npx --yes @google/clasp login      # abre o navegador e entra na sua conta Google
+```
+
+Pegue o ID do projeto em **Apps Script → Configurações do projeto → ID do script**, copie
+`.clasp.json.exemplo` para `.clasp.json` e cole o ID ali. Daí em diante:
+
+```bash
+npm run publicar                   # empacota e envia tudo (.gs, Interface.html, manifesto)
+```
+
+Só falta então **Implantar → Gerenciar implantações → editar → Nova versão** no editor.
+
+> **Atenção:** `npm run publicar` **sobrescreve** os arquivos que estão no Apps Script.
+> Se você editar `Config.gs` direto no editor do Google (a lista de e-mails, por exemplo),
+> a próxima publicação apaga essa edição. Mantenha as mudanças aqui no repositório, ou puxe
+> antes com `npx @google/clasp pull`.
+
+O arquivo `apps-script/appsscript.json` já vai com a configuração certa do Web App
+(*executar como usuário que acessa* e *qualquer pessoa com Conta do Google*). Confira no
+painel depois do primeiro envio.
+
+### Caminho manual: copiar e colar
+
+Sem instalar nada: abra `apps-script/Interface.html`, selecione tudo (Ctrl+A), copie e cole
+no arquivo HTML `Interface` dentro do editor do Apps Script. Mesma coisa para os `.gs` que
+tiverem mudado. Depois, **Implantar → Gerenciar implantações → editar → Nova versão**.
 
 ## 9. Quando algo dá errado
 
