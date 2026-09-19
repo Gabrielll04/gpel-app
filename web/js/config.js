@@ -8,7 +8,7 @@ GPEL.config = {
      Deixe vazio para que a própria usuária cole a URL na tela Configurações,
      ou preencha aqui para já sair configurado para todo mundo.
      Exemplo: 'https://script.google.com/macros/s/AKfycb.../exec' */
-  URL_API_PADRAO: 'https://script.google.com/macros/s/AKfycbxtFqYC411ff8330tPgdM-dTko-sm47mVDJJa75-soR9enyeVfWDr4hLzP_4B6MqYIR_A/exec',
+  URL_API_PADRAO: 'https://script.google.com/macros/s/AKfycbwO2ftFW5S_AvmsafYVY0GjK9gJkX_WqJmlWDStyX2VRDsq5u80zy0Io2HdOqlZKh3WYg/exec',
 
   /* Senha simples, só se você tiver preenchido TOKEN_ACESSO no Apps Script. */
   TOKEN_PADRAO: '',
