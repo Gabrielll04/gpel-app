@@ -31,10 +31,12 @@ opcional: o script usa a planilha em que está. Se for um projeto separado, pree
 1. Abra a planilha da GPEL → **Extensões → Apps Script**.
 2. Crie um arquivo para cada `.gs` da pasta `apps-script/` e cole o conteúdo
    (`Config.gs`, `Planilha.gs`, `Regras.gs`, `Acesso.gs`, `Estoque.gs`, `Automacoes.gs`,
-   `Interface.gs`, `Codigo.gs`).
+   `Pagina.gs`, `Codigo.gs`).
 3. Crie um arquivo **HTML** chamado `Interface` e cole o conteúdo de
    `apps-script/Interface.html` (é o aplicativo inteiro num arquivo só — veja a seção
-   *Publicar uma versão nova*).
+   *Publicar uma versão nova*). O nome `Interface` é reservado para esse HTML: o script que
+   o entrega se chama `Pagina.gs` justamente porque o Apps Script não aceita dois arquivos
+   com o mesmo nome.
 4. Em `Config.gs`, preencha `ID_PLANILHA` se necessário e escreva os e-mails autorizados em
    `USUARIOS_AUTORIZADOS`.
 5. Execute uma vez a função **`instalarPlanilha`** e autorize o acesso. Ela cria as abas
@@ -290,6 +292,10 @@ para a tela de login, que não traz cabeçalho de CORS. Um site de fora não con
 por você. Abra o aplicativo pela URL que termina em `/exec`. Quem tiver o atalho antigo no
 celular vê uma tela explicando isso, com um botão que leva ao endereço certo.
 
+**"Já existe um arquivo com esse nome" ao criar um script.**
+O arquivo HTML da página se chama `Interface`, e o Apps Script não aceita dois arquivos com o
+mesmo nome, mesmo sendo de tipos diferentes. O script correspondente se chama `Pagina.gs`.
+
 **A URL `/exec` devolve `{"ok":true,"dados":{"mensagem":"API GPEL no ar"...}}` em vez do aplicativo.**
 O `Codigo.gs` publicado é anterior ao controle de acesso: sem `action`, ele respondia o ping.
 Atualize `Codigo.gs`, `Config.gs` e acrescente `Acesso.gs` e `Interface.gs`; depois publique uma
@@ -326,7 +332,7 @@ trocar o atalho.
 |---|---|
 | `Config.gs` | Planilha, tabelas, colunas, listas fixas e **quem pode entrar**. |
 | `Acesso.gs` | Identifica a conta logada e barra quem não está na lista. |
-| `Interface.gs` | Entrega a página do aplicativo e faz a ponte com ela. |
+| `Pagina.gs` | Entrega a página do aplicativo e faz a ponte com ela. |
 | `Interface.html` | **Gerado** por `ferramentas/empacotar.js`. Não editar. |
 | `Planilha.gs` | Ler e gravar linhas. Sem regra de negócio. |
 | `Regras.gs` | Validação e **todos** os cálculos. |

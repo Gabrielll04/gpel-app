@@ -1,6 +1,10 @@
 /**
  * GPEL - Entrega da interface pelo próprio Apps Script.
  *
+ * Este arquivo NÃO pode se chamar "Interface": esse nome já é do arquivo HTML
+ * com a página, e o Apps Script não aceita dois arquivos com o mesmo nome,
+ * mesmo sendo de tipos diferentes.
+ *
  * Servindo o aplicativo daqui (e não de um site externo), o Google exige login
  * antes de mostrar qualquer coisa. É isso que permite restringir o acesso a
  * contas específicas — um site externo só consegue falar com o Web App se ele
