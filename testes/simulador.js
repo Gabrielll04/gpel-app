@@ -123,6 +123,18 @@ function carregarBackend() {
       getEffectiveUser: () => ({ getEmail: () => usuarioAtual }),
       getActiveUser: () => ({ getEmail: () => usuarioAtual })
     },
+    UrlFetchApp: {
+      fetch: (url) => ({ getResponseCode: () => 404, getContentText: () => '' })
+    },
+    CacheService: {
+      getScriptCache: () => {
+        const guardado = {};
+        return {
+          get: (chave) => (chave in guardado ? guardado[chave] : null),
+          putAll: (valores) => Object.assign(guardado, valores)
+        };
+      }
+    },
     HtmlService: {
       XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
       createHtmlOutput: (html) => criarSaidaHtml(html),

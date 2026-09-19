@@ -384,6 +384,21 @@ teste('maiúsculas e espaços no e-mail não barram a entrada', () => {
   conferirIgual(g.usuarioAutorizado(), true, 'comparação sem diferenciar caixa');
 });
 
+teste('abrir o endereço sem parâmetros entrega a página, não a resposta da API', () => {
+  const g = ambiente();
+  const saida = g.doGet({ parameter: {} }).getContent();
+  conferir(saida.indexOf('API GPEL no ar') === -1, 'não devolve o JSON do ping');
+  conferir(saida.indexOf('Interface') !== -1, 'devolve a página do aplicativo');
+});
+
+teste('sem página nenhuma, explica o que falta em vez de dar erro seco', () => {
+  const g = ambiente();
+  g.HtmlService.createHtmlOutputFromFile = () => { throw new Error('No HTML file named Interface was found.'); };
+  const saida = g.doGet({ parameter: {} }).getContent();
+  conferir(saida.indexOf('Falta a página do aplicativo') !== -1, 'mostra o aviso');
+  conferir(saida.indexOf('URL_INTERFACE') !== -1, 'diz onde configurar');
+});
+
 teste('a página do aplicativo não é servida para conta de fora', () => {
   const g = ambienteComLista(['dona@gpel.com']);
   g.__definirUsuario('estranho@outro.com');

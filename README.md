@@ -290,10 +290,17 @@ para a tela de login, que não traz cabeçalho de CORS. Um site de fora não con
 por você. Abra o aplicativo pela URL que termina em `/exec`. Quem tiver o atalho antigo no
 celular vê uma tela explicando isso, com um botão que leva ao endereço certo.
 
+**A URL `/exec` devolve `{"ok":true,"dados":{"mensagem":"API GPEL no ar"...}}` em vez do aplicativo.**
+O `Codigo.gs` publicado é anterior ao controle de acesso: sem `action`, ele respondia o ping.
+Atualize `Codigo.gs`, `Config.gs` e acrescente `Acesso.gs` e `Interface.gs`; depois publique uma
+versão nova. Para conferir qual versão está no ar, abra `/exec?action=ping`: a atual traz um
+campo `usuario` na resposta.
+
 **"No HTML file named Interface was found" ao abrir a URL `/exec`.**
-Falta criar o arquivo HTML `Interface` no projeto do Apps Script. Rode
-`node ferramentas/empacotar.js`, crie um arquivo **HTML** chamado `Interface` no editor e cole
-o conteúdo de `apps-script/Interface.html`.
+Falta criar o arquivo HTML `Interface` no projeto do Apps Script. Crie um arquivo **HTML** chamado `Interface`
+no editor e cole o conteúdo de `apps-script/Interface.html` (ele já vem pronto no repositório).
+Outra saída é preencher `URL_INTERFACE` em `Config.gs`: assim o Apps Script baixa a página do
+GitHub sozinho e não é preciso colar nada.
 
 **A página abre, mas diz "Acesso restrito".**
 A conta que fez login não está em `USUARIOS_AUTORIZADOS`. A tela mostra qual e-mail foi

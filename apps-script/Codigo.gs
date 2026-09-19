@@ -16,7 +16,7 @@ function doGet(e) {
 
   // Sem "action" é alguém abrindo o aplicativo no navegador: entrega a página.
   // Com "action" é o aplicativo pedindo dados.
-  if (!parametros.action) return servirInterface_();
+  if (!parametros.action) return servirInterface_(parametros);
 
   return responder_(function () {
     var p = parametros;

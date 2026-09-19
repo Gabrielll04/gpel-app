@@ -42,6 +42,22 @@ var USUARIOS_AUTORIZADOS = [
  */
 var TOKEN_ACESSO = '';
 
+/**
+ * DE ONDE VEM A PÁGINA DO APLICATIVO.
+ *
+ * Preenchido: o Apps Script baixa a página do repositório no GitHub. É o modo
+ * cômodo — publicar uma mudança de tela vira só um push, sem colar nada aqui.
+ * Vazio: usa o arquivo HTML chamado "Interface" colado neste projeto.
+ *
+ * O repositório precisa ser público para o endereço abaixo funcionar. A página
+ * é só a interface (não tem dado nenhum), e quem manda no repositório manda no
+ * que aparece na tela — se isso incomodar, deixe vazio e cole o Interface.html.
+ */
+var URL_INTERFACE = '';
+
+/** Por quantos minutos a página baixada fica guardada (evita baixar a cada abertura). */
+var MINUTOS_DE_CACHE_DA_PAGINA = 10;
+
 /** Fuso usado para gravar datas como texto (aaaa-mm-dd). */
 var FUSO = 'America/Sao_Paulo';
 
