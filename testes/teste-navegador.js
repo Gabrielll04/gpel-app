@@ -292,6 +292,31 @@ function popular(g) {
   conferir(textoFalha.indexOf('Compartilhe a planilha') !== -1, 'sugere a causa provável');
   await paginaFalha.close();
 
+  console.log('\nPonte sem as funções do servidor (Pagina.gs fora da publicação)');
+  const paginaSemPonte = await contexto.newPage();
+  paginaSemPonte.on('pageerror', (e) => erros.push('ponte: ' + e.message));
+  await paginaSemPonte.addInitScript(() => {
+    // google.script.run existe, mas só com outras funções: apiGet não foi publicada.
+    function construtor() {
+      const objeto = {
+        withSuccessHandler: () => objeto,
+        withFailureHandler: () => objeto,
+        instalarPlanilha: () => {},
+        doGet: () => {}
+      };
+      return objeto;
+    }
+    window.google = { script: { run: construtor() } };
+    try { window.localStorage.clear(); } catch (e) {}
+  });
+  await paginaSemPonte.goto('http://localhost:' + PORTA + '/interface-empacotada.html');
+  await paginaSemPonte.waitForTimeout(3500); // espera as tentativas de reconexão
+  const textoPonte = await paginaSemPonte.textContent('#tela');
+  conferir(textoPonte.indexOf('não tem a função "apiGet"') !== -1, 'diz qual função está faltando');
+  conferir(textoPonte.indexOf('Pagina.gs') !== -1, 'aponta o arquivo que precisa ser publicado');
+  conferir(textoPonte.indexOf('instalarPlanilha') !== -1, 'lista o que o servidor está oferecendo');
+  await paginaSemPonte.close();
+
   console.log('\nVisão de computador');
   const paginaGrande = await contexto.newPage();
   paginaGrande.on('pageerror', (e) => erros.push('desktop: ' + e.message));

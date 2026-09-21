@@ -844,16 +844,60 @@ GPEL.api = (function () {
     });
   }
 
+  /* O google.script.run só expõe as funções que existem na versão PUBLICADA
+     do script. Se apiGet não aparecer ali, é porque o Pagina.gs não entrou na
+     publicação — e vale dizer isso em vez de "não é uma função". */
+  function funcoesDoServidor() {
+    try {
+      return Object.keys(google.script.run).filter(function (nome) {
+        return nome.indexOf('with') !== 0 && typeof google.script.run[nome] === 'function';
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function erroDePonte(funcao) {
+    var disponiveis = funcoesDoServidor();
+    return new Error(
+      'O script publicado não tem a função "' + funcao + '", que é o que liga a tela à planilha. ' +
+      'Ela está no arquivo Pagina.gs: confira se ele existe no projeto e publique uma nova versão. ' +
+      (disponiveis.length
+        ? 'Funções que o servidor está oferecendo agora: ' + disponiveis.join(', ') + '.'
+        : 'O servidor não está oferecendo nenhuma função.'));
+  }
+
   /** Chamada pela ponte do Apps Script (quando a página é servida por ele). */
-  function pelaPonte(funcao, argumento) {
+  function pelaPonte(funcao, argumento, tentativa) {
     return new Promise(function (resolver, rejeitar) {
-      google.script.run
-        .withSuccessHandler(function (texto) {
-          try { resolver(interpretar(texto)); } catch (erro) { rejeitar(erro); }
-        })
-        .withFailureHandler(function (erro) {
-          rejeitar(new Error(erro && erro.message ? erro.message : 'Falha ao falar com o servidor.'));
-        })[funcao](argumento);
+      var executor;
+      try {
+        executor = google.script.run
+          .withSuccessHandler(function (texto) {
+            try { resolver(interpretar(texto)); } catch (erro) { rejeitar(erro); }
+          })
+          .withFailureHandler(function (erro) {
+            rejeitar(new Error(erro && erro.message ? erro.message : 'Falha ao falar com o servidor.'));
+          });
+      } catch (erro) {
+        rejeitar(erro);
+        return;
+      }
+
+      if (typeof executor[funcao] !== 'function') {
+        // A ponte do Google pode demorar um instante para ficar pronta: tenta de novo.
+        var vez = tentativa || 0;
+        if (vez < 10) {
+          setTimeout(function () {
+            pelaPonte(funcao, argumento, vez + 1).then(resolver, rejeitar);
+          }, 200);
+          return;
+        }
+        rejeitar(erroDePonte(funcao));
+        return;
+      }
+
+      executor[funcao](argumento);
     });
   }
 
@@ -3122,6 +3166,9 @@ GPEL.rotas = (function () {
     }
     if (/Ação desconhecida/i.test(texto)) {
       return 'O Codigo.gs publicado está desatualizado: publique uma nova versão.';
+    }
+    if (/não tem a função/i.test(texto)) {
+      return 'O arquivo Pagina.gs não está na versão publicada do script. Confira se ele existe no projeto (é onde ficam apiGet e apiPost) e publique uma nova versão.';
     }
     if (/Senha de acesso/i.test(texto)) {
       return 'O Config.gs tem TOKEN_ACESSO preenchido. Informe a mesma senha em Configurações ou deixe o campo vazio no Apps Script.';

@@ -60,6 +60,9 @@
     if (/Ação desconhecida/i.test(texto)) {
       return 'O Codigo.gs publicado está desatualizado: publique uma nova versão.';
     }
+    if (/não tem a função/i.test(texto)) {
+      return 'O arquivo Pagina.gs não está na versão publicada do script. Confira se ele existe no projeto (é onde ficam apiGet e apiPost) e publique uma nova versão.';
+    }
     if (/Senha de acesso/i.test(texto)) {
       return 'O Config.gs tem TOKEN_ACESSO preenchido. Informe a mesma senha em Configurações ou deixe o campo vazio no Apps Script.';
     }
