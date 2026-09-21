@@ -57,11 +57,21 @@ function calcularEstoque() {
     itens.push({ classe: classe, codigo: chave, item: nome, unidade: unidade });
   }
 
+  // A planilha já pode trazer o estoque mínimo no próprio cadastro: vale como
+  // ponto de partida quando ESTOQUE_ATUAL ainda não tem nada preenchido.
+  var minimoDoCadastro = {};
+
   listar('CAD_PRODUTOS').forEach(function (p) {
     acrescentar('Produto', p['Código'], textoLimpo_(p['Produto']), textoLimpo_(p['Unidade']));
+    if (p['Estoque Mín.'] !== '' && p['Estoque Mín.'] !== undefined) {
+      minimoDoCadastro[textoLimpo_(p['Código'])] = p['Estoque Mín.'];
+    }
   });
   listar('CAD_INSUMOS').forEach(function (i) {
     acrescentar('Insumo', i['Código'], textoLimpo_(i['Item']), textoLimpo_(i['Unidade']));
+    if (i['Estoque Mín.'] !== '' && i['Estoque Mín.'] !== undefined) {
+      minimoDoCadastro[textoLimpo_(i['Código'])] = i['Estoque Mín.'];
+    }
   });
   // Itens que só aparecem em movimentações (cadastro excluído, por exemplo) não podem sumir do saldo.
   movimentos.forEach(function (m) {
@@ -71,6 +81,9 @@ function calcularEstoque() {
   return itens.map(function (item) {
     var totais = totaisDoItem_(movimentos, item.codigo);
     var minimo = Object.prototype.hasOwnProperty.call(anteriores, item.codigo) ? anteriores[item.codigo] : '';
+    if (minimo === '' && Object.prototype.hasOwnProperty.call(minimoDoCadastro, item.codigo)) {
+      minimo = minimoDoCadastro[item.codigo];
+    }
     if (minimo !== '') minimo = paraNumero_(minimo);
     return {
       'Classe': item.classe,
@@ -100,18 +113,23 @@ function recalcularEstoque() {
 /** Regrava a aba ESTOQUE_ATUAL inteira com valores (nunca fórmulas). */
 function gravarEstoqueAtual_(linhas) {
   var aba = garantirColunas_('ESTOQUE_ATUAL');
-  var cabecalho = cabecalhoDe_(aba);
+  var cabecalho = cabecalhoDe_('ESTOQUE_ATUAL');
+  var primeiraLinha = linhaDoCabecalho_('ESTOQUE_ATUAL') + 1; // respeita título e cabeçalho da planilha
   var ultimaLinha = aba.getLastRow();
-  if (ultimaLinha > 1) aba.getRange(2, 1, ultimaLinha - 1, Math.max(cabecalho.length, 1)).clearContent();
+
+  if (ultimaLinha >= primeiraLinha) {
+    aba.getRange(primeiraLinha, 1, ultimaLinha - primeiraLinha + 1, Math.max(cabecalho.length, 1)).clearContent();
+  }
   limparCache_('ESTOQUE_ATUAL');
   if (!linhas.length) return;
+
   var matriz = linhas.map(function (linha) {
     return cabecalho.map(function (coluna) {
       var valor = linha[coluna];
       return valor === undefined || valor === null ? '' : valor;
     });
   });
-  aba.getRange(2, 1, matriz.length, cabecalho.length).setValues(matriz);
+  aba.getRange(primeiraLinha, 1, matriz.length, cabecalho.length).setValues(matriz);
   limparCache_('ESTOQUE_ATUAL');
 }
 
@@ -119,7 +137,7 @@ function gravarEstoqueAtual_(linhas) {
 function definirEstoqueMinimo(codigo, minimo) {
   var alvo = textoLimpo_(codigo);
   var aba = garantirColunas_('ESTOQUE_ATUAL');
-  var cabecalho = cabecalhoDe_(aba);
+  var cabecalho = cabecalhoDe_('ESTOQUE_ATUAL');
   var registros = listar('ESTOQUE_ATUAL');
   var achado = null;
   registros.forEach(function (r) { if (textoLimpo_(r['Código']) === alvo) achado = r; });
@@ -166,7 +184,7 @@ function gerarEntradaDaCompra_(compra, responsavel) {
   });
 
   var aba = garantirColunas_('COMPRAS');
-  var cabecalho = cabecalhoDe_(aba);
+  var cabecalho = cabecalhoDe_('COMPRAS');
   aba.getRange(compra._linha, cabecalho.indexOf('Mov. Gerado') + 1).setValue(movimento['ID Movimento']);
   limparCache_('COMPRAS');
   compra['Mov. Gerado'] = movimento['ID Movimento'];
@@ -203,7 +221,7 @@ function aprovarAjusteInventario(idInventario, responsavel) {
   var diferenca = arredondar_(contagem - saldoAtual, 4);
 
   var aba = garantirColunas_('INVENTARIO');
-  var cabecalho = cabecalhoDe_(aba);
+  var cabecalho = cabecalhoDe_('INVENTARIO');
   aba.getRange(inventario._linha, cabecalho.indexOf('Saldo Sistema') + 1).setValue(saldoAtual);
   aba.getRange(inventario._linha, cabecalho.indexOf('Diferença') + 1).setValue(diferenca);
   aba.getRange(inventario._linha, cabecalho.indexOf('Ajuste?') + 1).setValue(diferenca !== 0 ? 'Sim' : 'Não');

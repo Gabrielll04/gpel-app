@@ -96,7 +96,8 @@ var TABELAS = {
       { nome: 'Código',   tipo: 'texto', obrigatorio: true },
       { nome: 'Produto',  tipo: 'texto', obrigatorio: true },
       { nome: 'Tipo',     tipo: 'lista', lista: 'TIPO_PRODUTO', obrigatorio: true },
-      { nome: 'Unidade',  tipo: 'texto', obrigatorio: true }
+      { nome: 'Unidade',  tipo: 'texto', obrigatorio: true },
+      { nome: 'Estoque Mín.', tipo: 'decimal' }
     ]
   },
 
@@ -110,7 +111,8 @@ var TABELAS = {
     campos: [
       { nome: 'Código',  tipo: 'texto', obrigatorio: true },
       { nome: 'Item',    tipo: 'texto', obrigatorio: true },
-      { nome: 'Unidade', tipo: 'texto', obrigatorio: true }
+      { nome: 'Unidade', tipo: 'texto', obrigatorio: true },
+      { nome: 'Estoque Mín.', tipo: 'decimal' }
     ]
   },
 
@@ -288,6 +290,39 @@ var TABELAS = {
     colunasLivres: true,
     campos: []
   }
+};
+
+/**
+ * NOMES EQUIVALENTES DE COLUNA.
+ *
+ * A planilha da GPEL já existia antes do aplicativo e tem nomes próprios.
+ * Aqui se diz que "Unid. Estoque" é a mesma coisa que "Unidade", e assim por
+ * diante, para não precisar renomear coluna nenhuma na planilha.
+ *
+ * Acentos, pontos, espaços e maiúsculas são ignorados na comparação: "Código",
+ * "codigo" e "CÓDIGO" já são entendidos como a mesma coluna, sem entrar aqui.
+ *
+ * Quando duas colunas da planilha apontam para o mesmo nome (o caso de
+ * "Unid. Estoque" e "Unid. Venda"), vale a primeira da lista.
+ */
+var SINONIMOS = {
+  'Unidade':      ['Unid. Estoque', 'Unidade de Estoque', 'Unid', 'Un', 'Unid. Venda', 'Unidade de Venda'],
+  'Item':         ['Insumo', 'Material', 'Descrição', 'Nome do Item'],
+  'Produto':      ['Descrição do Produto', 'Nome do Produto'],
+  'Razão Social': ['Razao Social', 'Nome', 'Empresa', 'Cliente', 'Fornecedor'],
+  'Estoque Mín.': ['Estoque Mínimo', 'Mínimo', 'Min', 'Estoque Min'],
+  'Quantidade':   ['Qtd', 'Qtde', 'Quant'],
+  'Valor Unit.':  ['Valor Unitário', 'Preço Unitário', 'Preço'],
+  'Valor Total':  ['Total'],
+  'Código Item':  ['Código do Item', 'Cód. Item'],
+  'Documento Ref.': ['Documento', 'Doc'],
+  'Pedido Ref.':  ['Pedido'],
+  'Tipo Compra':  ['Tipo de Compra'],
+  'Prazo / Data Entrega': ['Prazo', 'Data de Entrega', 'Entrega'],
+  'Origem comercial': ['Origem'],
+  'Contagem Física': ['Contagem', 'Físico'],
+  'Perdas (kg)':  ['Perdas'],
+  'MP consumida (kg)': ['MP consumida', 'Matéria-prima consumida']
 };
 
 /** Campos calculados pelo servidor (nunca digitados, nunca com fórmula na planilha). */

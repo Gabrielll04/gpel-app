@@ -53,6 +53,104 @@ function ambiente() {
   return contexto;
 }
 
+/* ------------------------------------ Planilha com layout próprio ------ */
+
+console.log('\nPlanilha da GPEL (título no topo, cabeçalho na linha 4)');
+
+/** Monta as abas como estão na planilha real: faixa de título, linha em
+    branco, cabeçalho na linha 4 e nomes de coluna próprios. */
+function ambienteComLayoutDaEmpresa() {
+  const { contexto, planilha } = carregarBackend();
+
+  const insumos = planilha.insertSheet('CAD_INSUMOS');
+  insumos.getRange(1, 1, 1, 1).setValues([['GPEL | CADASTRO DE MATÉRIAS-PRIMAS / TUBETES / EMBALAGENS']]);
+  insumos.getRange(4, 1, 1, 10).setValues([[
+    'Código', 'Item', 'Categoria', 'Especificação', 'Unid. Estoque',
+    'Estoque Mín.', 'Estoque Máx.', 'Fornecedor Padrão', 'Ativo?', 'Observações'
+  ]]);
+  insumos.getRange(5, 1, 3, 10).setValues([
+    ['MP-BOB-LEN', 'Bobina para lençol hospitalar', 'Matéria-prima', '2450 x 48 mm', 'kg', 100, '', '', 'Sim', 'Separar do papel toalha'],
+    ['MP-TUB-01', 'Tubete tipo 1', 'Tubete', 'Dimensão a confirmar', 'un.', '', '', '', 'Sim', ''],
+    ['EMB-LEN', 'Embalagem Lençol Hospitalar', 'Embalagem', 'Específica', 'un.', '', '', '', 'Sim', '']
+  ]);
+
+  const produtos = planilha.insertSheet('CAD_PRODUTOS');
+  produtos.getRange(1, 1, 1, 1).setValues([['GPEL | CADASTRO DE PRODUTOS']]);
+  produtos.getRange(4, 1, 1, 7).setValues([[
+    'Código', 'Produto', 'Tipo', 'Unid. Estoque', 'Unid. Venda', 'Qtd./Fardo', 'Observações'
+  ]]);
+  produtos.getRange(5, 1, 2, 7).setValues([
+    ['FAB-PH300', 'Papel higiênico 300m', 'Fabricação', 'fardo', 'fardo', 8, '8 rolos/fardo'],
+    ['REV-SAB', 'Sabonete líquido', 'Revenda', 'L', 'L', '', '']
+  ]);
+
+  contexto.instalarPlanilha();
+  return contexto;
+}
+
+teste('lê os itens mesmo com o cabeçalho fora da primeira linha', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  const insumos = g.listar('CAD_INSUMOS');
+  conferirIgual(insumos.length, 3, 'todos os insumos aparecem');
+  conferirIgual(insumos[0]['Código'], 'MP-BOB-LEN', 'código lido');
+  conferirIgual(insumos[0]['Item'], 'Bobina para lençol hospitalar', 'nome lido');
+  conferir(insumos[0]['_linha'] === 5, 'a linha apontada é a da planilha');
+});
+
+teste('"Unid. Estoque" é entendida como a coluna de unidade', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  conferirIgual(g.listar('CAD_INSUMOS')[0]['Unidade'], 'kg', 'unidade do insumo');
+  conferirIgual(g.listar('CAD_PRODUTOS')[0]['Unidade'], 'fardo', 'unidade do produto');
+});
+
+teste('a faixa de título não vira registro', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  const codigos = g.listar('CAD_PRODUTOS').map((p) => p['Código']);
+  conferir(codigos.indexOf('GPEL | CADASTRO DE PRODUTOS') === -1, 'título fora da lista');
+  conferirIgual(codigos.length, 2, 'só os produtos de verdade');
+});
+
+teste('cadastro novo entra depois dos existentes, sem mexer no título', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  g.criar_('CAD_INSUMOS', { 'Código': 'MP-COLA', 'Item': 'Cola', 'Unidade': 'kg' });
+  const insumos = g.listar('CAD_INSUMOS');
+  conferirIgual(insumos.length, 4, 'o novo item entrou');
+  const novo = insumos.filter((i) => i['Código'] === 'MP-COLA')[0];
+  conferirIgual(novo['Item'], 'Cola', 'nome gravado na coluna certa');
+  conferirIgual(novo['Unidade'], 'kg', 'unidade gravada na coluna de estoque');
+  conferirIgual(novo._linha, 8, 'gravado logo abaixo do último item');
+});
+
+teste('pedido usa a unidade que veio da coluna própria da planilha', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  g.criar_('CAD_CLIENTES', { 'Código': 'CL001', 'Razão Social': 'Unidade Prisional' });
+  const pedido = g.criar_('PEDIDOS', {
+    'Data': '2026-09-20', 'Cliente': 'CL001', 'Produto': 'FAB-PH300',
+    'Quantidade': 10, 'Valor Unit.': 25, 'Status': 'Recebido'
+  }).registro;
+  conferirIgual(pedido['Unidade'], 'fardo', 'unidade veio do cadastro');
+});
+
+teste('estoque mínimo já preenchido no cadastro é aproveitado', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  const linha = g.calcularEstoque().filter((l) => l['Código'] === 'MP-BOB-LEN')[0];
+  conferirIgual(linha['Estoque Mín.'], 100, 'mínimo herdado do cadastro');
+  conferirIgual(linha['Unidade'], 'kg', 'unidade no estoque');
+  conferirIgual(linha['Status'], 'REPOR', 'saldo zero com mínimo 100 pede reposição');
+});
+
+teste('movimentação encontra o item cadastrado nesse layout', () => {
+  const g = ambienteComLayoutDaEmpresa();
+  g.criar_('MOV_ESTOQUE', {
+    'Data': '2026-09-20', 'Classe': 'Insumo', 'Código Item': 'MP-BOB-LEN',
+    'Entrada/Saída': 'Entrada', 'Origem': 'Compra', 'Quantidade': 250
+  });
+  const movimento = g.listar('MOV_ESTOQUE')[0];
+  conferirIgual(movimento['Item'], 'Bobina para lençol hospitalar', 'item buscado no cadastro');
+  conferirIgual(movimento['Unidade'], 'kg', 'unidade buscada no cadastro');
+  conferirIgual(g.saldoDoItem('MP-BOB-LEN'), 250, 'saldo calculado');
+});
+
 /* ---------------------------------------------------------- Cadastros */
 
 console.log('\nCadastros');

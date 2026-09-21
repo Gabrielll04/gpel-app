@@ -157,6 +157,17 @@ vendo a versão antiga depois de uma correção.
 - Confira se cada produto e insumo tem **Unidade** preenchida: é ela que aparece
   automaticamente nos pedidos, na produção e nas movimentações.
 
+**Sobre o formato das abas.** Não é preciso arrumar a planilha para o aplicativo: ele procura
+o cabeçalho nas primeiras linhas de cada aba, então faixas de título e linhas em branco no
+topo não atrapalham. Os nomes das colunas também não precisam ser idênticos — acento,
+pontuação e maiúsculas são ignorados, e os nomes equivalentes ficam em `SINONIMOS`
+(`Config.gs`): é lá que está escrito, por exemplo, que `Unid. Estoque` é a coluna de unidade.
+Colunas próprias da planilha (`Categoria`, `Ativo?`, `Observações`…) são preservadas.
+
+Se um item da planilha aparecer no aplicativo com todos os campos vazios ("—"), é sinal de que
+o cabeçalho daquela aba não foi reconhecido: veja se a linha de cabeçalho tem pelo menos duas
+colunas com nomes conhecidos.
+
 ---
 
 ## 6. Como o sistema funciona
@@ -291,6 +302,11 @@ tiverem mudado. Depois, **Implantar → Gerenciar implantações → editar → 
 para a tela de login, que não traz cabeçalho de CORS. Um site de fora não consegue fazer login
 por você. Abra o aplicativo pela URL que termina em `/exec`. Quem tiver o atalho antigo no
 celular vê uma tela explicando isso, com um botão que leva ao endereço certo.
+
+**Os itens aparecem na lista, mas todos os campos mostram "—".**
+O cabeçalho daquela aba não foi reconhecido e o aplicativo leu outra linha no lugar dele.
+Confira se a linha de cabeçalho traz pelo menos duas colunas com nomes conhecidos, ou
+acrescente o nome que você usa em `SINONIMOS`, no `Config.gs`.
 
 **"Já existe um arquivo com esse nome" ao criar um script.**
 O arquivo HTML da página se chama `Interface`, e o Apps Script não aceita dois arquivos com o
