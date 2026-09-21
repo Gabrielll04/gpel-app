@@ -75,6 +75,8 @@ function estruturaDe_(nomeTabela) {
   var altura = Math.min(15, aba.getMaxRows ? aba.getMaxRows() : 15);
   var estrutura = { linha: 1, colunas: [] };
 
+  var semColunasPrevistas = !def.campos || !def.campos.length;
+
   if (altura >= 1) {
     var aceitos = nomesAceitos_(def);
     var amostra = aba.getRange(1, 1, altura, largura).getValues();
@@ -90,10 +92,13 @@ function estruturaDe_(nomeTabela) {
         preenchidas++;
         if (traduzida[coluna] !== celula || aceitos[normalizarNome_(celula)]) reconhecidas++;
       });
-      // Só é cabeçalho quem traz pelo menos dois nomes de coluna conhecidos.
-      // Sem isso, uma faixa de título com uma coluna solta ao lado passaria
-      // por cabeçalho e os dados seriam gravados por cima do título.
-      if (preenchidas < 2 || reconhecidas < 2) continue;
+      if (preenchidas < 2) continue; // faixa de título ocupa uma célula só
+
+      // Em tabela sem colunas previstas (o histórico de vendas, por exemplo)
+      // não há o que reconhecer: vale a linha mais completa do topo.
+      // Nas demais, só é cabeçalho quem traz pelo menos dois nomes conhecidos,
+      // senão uma coluna solta ao lado do título passaria por cabeçalho.
+      if (!semColunasPrevistas && reconhecidas < 2) continue;
       var pontuacao = reconhecidas * 10 + preenchidas;
       if (pontuacao > melhorPontuacao) {
         melhorPontuacao = pontuacao;
@@ -210,7 +215,13 @@ function acrescentarColunasFaltantes_(aba, def) {
     .filter(function (nome) { return cabecalho.indexOf(nome) === -1; });
   if (!faltantes.length) return;
 
-  var inicio = cabecalho.filter(function (c) { return c !== ''; }).length + 1;
+  // Depois da última coluna preenchida — e não pela contagem de colunas com
+  // nome. Cabeçalho com célula vazia no meio faria a conta escrever por cima
+  // de uma coluna que já existe.
+  var ultimaPreenchida = 0;
+  cabecalho.forEach(function (coluna, i) { if (textoLimpo_(coluna) !== '') ultimaPreenchida = i + 1; });
+  var inicio = ultimaPreenchida + 1;
+
   aba.getRange(estrutura.linha, inicio, 1, faltantes.length)
      .setValues([faltantes])
      .setFontWeight('bold');

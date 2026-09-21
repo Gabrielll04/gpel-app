@@ -175,6 +175,40 @@ teste('o diagnóstico diz onde está o cabeçalho e o que não encontrou', () =>
   conferir(relatorio.indexOf('PARAMETROS') === -1, 'não expõe a aba técnica');
 });
 
+teste('coluna técnica entra depois da última coluna, sem sobrescrever nada', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('COMPRAS');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | COMPRAS']]);
+  // cabeçalho com célula vazia no fim, como está na planilha
+  aba.getRange(4, 1, 1, 14).setValues([[
+    'Data', 'ID Compra', 'NF', 'Fornecedor', 'Tipo Compra', 'Classe', 'Código Item',
+    'Item', 'Quantidade', 'Unidade', 'Valor Unit.', 'Valor Total', 'Observações', ''
+  ]]);
+  contexto.instalarPlanilha();
+
+  const colunas = contexto.estruturaDe_('COMPRAS').colunas;
+  conferir(colunas.indexOf('Mov. Gerado') !== -1, 'a coluna técnica foi acrescentada');
+  conferir(colunas.indexOf('Observações') < colunas.indexOf('Mov. Gerado'), 'entrou depois das existentes');
+  conferirIgual(colunas.filter((c) => c === 'Observações').length, 1, 'nada foi sobrescrito');
+});
+
+teste('histórico de vendas: cabeçalho é a linha mais completa do topo', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('VENDAS_HISTORICO');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | HISTÓRICO DE VENDAS']]);
+  aba.getRange(4, 1, 1, 4).setValues([['Data', 'Cliente', 'Produto', 'Valor Total']]);
+  aba.getRange(5, 1, 2, 4).setValues([
+    ['2026-08-01', 'CL001', 'Papel higiênico 300m', 1200],
+    ['2026-08-05', 'CL001', 'Sabonete líquido', 300]
+  ]);
+  contexto.instalarPlanilha();
+
+  conferirIgual(contexto.estruturaDe_('VENDAS_HISTORICO').linha, 4, 'achou o cabeçalho na linha 4');
+  const vendas = contexto.listar('VENDAS_HISTORICO');
+  conferirIgual(vendas.length, 2, 'as vendas são lidas');
+  conferirIgual(vendas[0]['Produto'], 'Papel higiênico 300m', 'com as colunas da própria planilha');
+});
+
 teste('lê os itens mesmo com o cabeçalho fora da primeira linha', () => {
   const g = ambienteComLayoutDaEmpresa();
   const insumos = g.listar('CAD_INSUMOS');
