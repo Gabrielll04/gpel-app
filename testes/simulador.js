@@ -110,7 +110,20 @@ function formatarData(data, fuso, formato) {
 }
 
 /** Carrega os arquivos .gs em um contexto isolado e devolve as funções. */
-function carregarBackend() {
+/** Remove declarações "var NOME = ...;" do conteúdo de um arquivo. */
+function removerVariaveis(codigo, nomes) {
+  nomes.forEach((nome) => {
+    const inicio = codigo.indexOf('var ' + nome);
+    if (inicio === -1) return;
+    const fim = codigo.indexOf(';', inicio);
+    if (fim === -1) return;
+    codigo = codigo.slice(0, inicio) + codigo.slice(fim + 1);
+  });
+  return codigo;
+}
+
+function carregarBackend(opcoes) {
+  opcoes = opcoes || {};
   const planilha = criarPlanilhaFalsa();
 
   // Conta "logada" nos testes. Trocar com contexto.__definirUsuario('...').
@@ -167,7 +180,12 @@ function carregarBackend() {
   const pasta = path.join(__dirname, '..', 'apps-script');
   const arquivos = fs.readdirSync(pasta).filter((a) => a.endsWith('.gs')).sort();
   ['Config.gs'].concat(arquivos.filter((a) => a !== 'Config.gs')).forEach((arquivo) => {
-    vm.runInContext(fs.readFileSync(path.join(pasta, arquivo), 'utf8'), contexto, { filename: arquivo });
+    let codigo = fs.readFileSync(path.join(pasta, arquivo), 'utf8');
+    // Simula o Config.gs desatualizado de quem cola os arquivos um a um.
+    if (arquivo === 'Config.gs' && opcoes.configAntigo) {
+      codigo = removerVariaveis(codigo, opcoes.configAntigo);
+    }
+    vm.runInContext(codigo, contexto, { filename: arquivo });
   });
 
   return { contexto, planilha };

@@ -32,15 +32,29 @@ function servirInterface_(parametros) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+/* Config.gs pode estar em uma versão mais antiga que este arquivo (acontece
+   ao colar os arquivos um a um no editor). Ler as configurações com typeof
+   evita o "ReferenceError" e faz o aplicativo continuar de pé, com o padrão. */
+function configuracao_(nome, padrao) {
+  try {
+    var global = (typeof globalThis !== 'undefined') ? globalThis : this;
+    var valor = global ? global[nome] : undefined;
+    return (valor === undefined || valor === null) ? padrao : valor;
+  } catch (e) {
+    return padrao;
+  }
+}
+
 /** Busca a página: cache -> GitHub -> arquivo colado no projeto. */
 function paginaDoAplicativo_(recarregar) {
-  if (URL_INTERFACE) {
+  var endereco = configuracao_('URL_INTERFACE', '');
+  if (endereco) {
     if (!recarregar) {
       var guardada = paginaNoCache_();
       if (guardada) return guardada;
     }
     try {
-      var resposta = UrlFetchApp.fetch(URL_INTERFACE, { muteHttpExceptions: true, followRedirects: true });
+      var resposta = UrlFetchApp.fetch(endereco, { muteHttpExceptions: true, followRedirects: true });
       if (resposta.getResponseCode() === 200) {
         var baixada = resposta.getContentText();
         guardarPaginaNoCache_(baixada);
@@ -81,7 +95,7 @@ function paginaNoCache_() {
 function guardarPaginaNoCache_(html) {
   try {
     var cache = CacheService.getScriptCache();
-    var segundos = Math.max(60, MINUTOS_DE_CACHE_DA_PAGINA * 60);
+    var segundos = Math.max(60, configuracao_('MINUTOS_DE_CACHE_DA_PAGINA', 10) * 60);
     var quantos = Math.ceil(html.length / TAMANHO_DO_PEDACO);
     var valores = { interface_pedacos: String(quantos) };
     for (var i = 0; i < quantos; i++) {

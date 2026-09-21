@@ -399,6 +399,20 @@ teste('sem página nenhuma, explica o que falta em vez de dar erro seco', () => 
   conferir(saida.indexOf('URL_INTERFACE') !== -1, 'diz onde configurar');
 });
 
+teste('Config.gs antigo não derruba o aplicativo (falta URL_INTERFACE)', () => {
+  const { contexto } = carregarBackend({ configAntigo: ['URL_INTERFACE', 'MINUTOS_DE_CACHE_DA_PAGINA'] });
+  contexto.instalarPlanilha();
+  const saida = contexto.doGet({ parameter: {} }).getContent();
+  conferir(saida.indexOf('Interface') !== -1, 'a página é entregue mesmo assim');
+});
+
+teste('Config.gs antigo não derruba o controle de acesso (falta a lista)', () => {
+  const { contexto } = carregarBackend({ configAntigo: ['USUARIOS_AUTORIZADOS'] });
+  contexto.instalarPlanilha();
+  conferirIgual(contexto.usuarioAutorizado(), true, 'segue o padrão de lista vazia');
+  conferirIgual(contexto.dadosDoUsuario_().listaAtiva, false, 'e avisa que não há lista ativa');
+});
+
 teste('a página do aplicativo não é servida para conta de fora', () => {
   const g = ambienteComLista(['dona@gpel.com']);
   g.__definirUsuario('estranho@outro.com');

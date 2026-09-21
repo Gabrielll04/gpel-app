@@ -12,6 +12,15 @@
  *    do Google, onde não há login possível. Opcional.
  */
 
+/** Lista de e-mails autorizados, tolerante a um Config.gs mais antigo. */
+function listaDeAutorizados_() {
+  try {
+    return typeof USUARIOS_AUTORIZADOS !== 'undefined' && USUARIOS_AUTORIZADOS ? USUARIOS_AUTORIZADOS : [];
+  } catch (e) {
+    return [];
+  }
+}
+
 /** E-mail de quem está usando o aplicativo agora ('' se o Google não informar). */
 function emailDoUsuario() {
   try {
@@ -37,11 +46,12 @@ function nomeDoUsuario() {
 
 /** A conta atual está na lista de autorizados? */
 function usuarioAutorizado() {
-  if (!USUARIOS_AUTORIZADOS.length) return true; // lista vazia: a trava é a publicação
+  var autorizados = listaDeAutorizados_();
+  if (!autorizados.length) return true; // lista vazia: a trava é a publicação
   var email = emailDoUsuario();
   if (!email) return false;
-  for (var i = 0; i < USUARIOS_AUTORIZADOS.length; i++) {
-    if (String(USUARIOS_AUTORIZADOS[i]).trim().toLowerCase() === email) return true;
+  for (var i = 0; i < autorizados.length; i++) {
+    if (String(autorizados[i]).trim().toLowerCase() === email) return true;
   }
   return false;
 }
@@ -68,6 +78,6 @@ function dadosDoUsuario_() {
     email: emailDoUsuario(),
     nome: nomeDoUsuario(),
     autorizado: usuarioAutorizado(),
-    listaAtiva: USUARIOS_AUTORIZADOS.length > 0
+    listaAtiva: listaDeAutorizados_().length > 0
   };
 }
