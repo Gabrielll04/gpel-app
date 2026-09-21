@@ -45,6 +45,13 @@ function configuracao_(nome, padrao) {
   }
 }
 
+/* O arquivo "Interface" tem de ser a página do aplicativo. Se alguém colar
+   outro conteúdo nele (um .gs, por exemplo), o navegador mostraria esse texto
+   como se fosse a tela — confuso. Melhor recusar e explicar. */
+function pareceAPagina_(texto) {
+  return !!texto && /<(!doctype|html)\b/i.test(texto.slice(0, 2000));
+}
+
 /** Busca a página: cache -> GitHub -> arquivo colado no projeto. */
 function paginaDoAplicativo_(recarregar) {
   var endereco = configuracao_('URL_INTERFACE', '');
@@ -57,15 +64,18 @@ function paginaDoAplicativo_(recarregar) {
       var resposta = UrlFetchApp.fetch(endereco, { muteHttpExceptions: true, followRedirects: true });
       if (resposta.getResponseCode() === 200) {
         var baixada = resposta.getContentText();
-        guardarPaginaNoCache_(baixada);
-        return baixada;
+        if (pareceAPagina_(baixada)) {
+          guardarPaginaNoCache_(baixada);
+          return baixada;
+        }
       }
     } catch (e) {
       // Sem internet ou endereço fora do ar: tenta o arquivo do projeto.
     }
   }
   try {
-    return HtmlService.createHtmlOutputFromFile('Interface').getContent();
+    var doProjeto = HtmlService.createHtmlOutputFromFile('Interface').getContent();
+    return pareceAPagina_(doProjeto) ? doProjeto : '';
   } catch (e) {
     return '';
   }
@@ -118,10 +128,13 @@ function paginaSemInterface_() {
     'p{margin:0 0 8px;color:#63707E;font-size:14.5px;line-height:1.5}' +
     'code{background:#F3F5F7;padding:2px 6px;border-radius:5px;font-size:13px;color:#1D2733}</style>' +
     '</head><body><div class="caixa"><h1>Falta a página do aplicativo</h1>' +
-    '<p>O servidor está no ar, mas não encontrou a interface.</p>' +
-    '<p>Confira <code>URL_INTERFACE</code> em <code>Config.gs</code>: ou ela aponta para o arquivo ' +
-    '<code>Interface.html</code> publicado no GitHub, ou deve ficar vazia e existir um arquivo HTML ' +
-    'chamado <code>Interface</code> neste projeto.</p></div></body></html>';
+    '<p>O servidor está no ar, mas não encontrou a interface — ou o que encontrou não é uma página.</p>' +
+    '<p>Confira o arquivo HTML chamado <code>Interface</code> neste projeto: ele precisa ter o conteúdo ' +
+    'de <code>Interface.html</code>, que começa com <code>&lt;!DOCTYPE html&gt;</code>. Se algum código ' +
+    '<code>.gs</code> foi colado nele por engano, é isso.</p>' +
+    '<p>A outra saída é preencher <code>URL_INTERFACE</code> em <code>Config.gs</code> com o endereço do ' +
+    '<code>Interface.html</code> publicado no GitHub: aí não é preciso colar a página aqui.</p>' +
+    '</div></body></html>';
   return HtmlService.createHtmlOutput(html).setTitle('GPEL');
 }
 

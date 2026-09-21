@@ -413,6 +413,18 @@ teste('Config.gs antigo não derruba o controle de acesso (falta a lista)', () =
   conferirIgual(contexto.dadosDoUsuario_().listaAtiva, false, 'e avisa que não há lista ativa');
 });
 
+teste('conteúdo errado no arquivo Interface não vira tela de código', () => {
+  const g = ambiente();
+  // simula alguém colando um .gs dentro do arquivo HTML "Interface"
+  g.HtmlService.createHtmlOutputFromFile = () => ({
+    getContent: () => 'function doGet(e) { /* codigo colado no lugar errado */ }'
+  });
+  const saida = g.doGet({ parameter: {} }).getContent();
+  conferir(saida.indexOf('function doGet') === -1, 'não devolve o código como página');
+  conferir(saida.indexOf('Falta a página do aplicativo') !== -1, 'mostra o aviso');
+  conferir(saida.indexOf('DOCTYPE') !== -1, 'diz como a página deveria começar');
+});
+
 teste('a página do aplicativo não é servida para conta de fora', () => {
   const g = ambienteComLista(['dona@gpel.com']);
   g.__definirUsuario('estranho@outro.com');
