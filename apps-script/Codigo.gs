@@ -263,6 +263,38 @@ function responder_(funcao) {
 /* Manutenção (executar manualmente pelo editor do Apps Script)         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Mostra o que o sistema entendeu de cada aba: em que linha achou o cabeçalho,
+ * quantos registros leu e quais colunas previstas não encontrou.
+ *
+ * Execute pelo editor (menu de funções > diagnosticarPlanilha > Executar) e
+ * veja o resultado no registro de execução. É o caminho mais rápido para
+ * descobrir por que uma aba aparece vazia ou com os campos em branco.
+ */
+function diagnosticarPlanilha() {
+  var relatorio = [];
+
+  Object.keys(TABELAS).forEach(function (nome) {
+    var def = TABELAS[nome];
+    if (def.tecnica) return;
+
+    var estrutura = estruturaDe_(nome);
+    var previstas = (def.campos || []).map(function (campo) { return campo.nome; });
+    var faltando = previstas.filter(function (coluna) { return estrutura.colunas.indexOf(coluna) === -1; });
+    var quantos = listar(nome).length;
+
+    relatorio.push(
+      nome + ': cabeçalho na linha ' + estrutura.linha + ', ' + quantos + ' registro(s).' +
+      (estrutura.colunas.length ? ' Colunas: ' + estrutura.colunas.join(' | ') + '.' : ' Nenhuma coluna reconhecida.') +
+      (faltando.length ? ' NÃO ENCONTRADAS: ' + faltando.join(', ') + '.' : '')
+    );
+  });
+
+  var texto = relatorio.join('\n\n');
+  Logger.log(texto);
+  return texto;
+}
+
 /** Cria as abas que faltarem e acerta os cabeçalhos, sem apagar nada. */
 function instalarPlanilha() {
   Object.keys(TABELAS).forEach(function (nome) { garantirColunas_(nome); });

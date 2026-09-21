@@ -164,9 +164,13 @@ pontuação e maiúsculas são ignorados, e os nomes equivalentes ficam em `SINO
 (`Config.gs`): é lá que está escrito, por exemplo, que `Unid. Estoque` é a coluna de unidade.
 Colunas próprias da planilha (`Categoria`, `Ativo?`, `Observações`…) são preservadas.
 
-Se um item da planilha aparecer no aplicativo com todos os campos vazios ("—"), é sinal de que
-o cabeçalho daquela aba não foi reconhecido: veja se a linha de cabeçalho tem pelo menos duas
-colunas com nomes conhecidos.
+Nomes compostos também são entendidos: `Cliente / Razão Social` é reconhecida como a coluna
+`Razão Social`. Isso vale para nomes longos o bastante para não haver confusão — `Data` nunca
+captura `Data de Entrega`, por exemplo.
+
+Se um item da planilha aparecer no aplicativo com todos os campos vazios ("—"), execute
+`diagnosticarPlanilha` pelo editor do Apps Script: o relatório mostra, para cada aba, a linha
+do cabeçalho, as colunas reconhecidas e as que faltaram.
 
 ---
 
@@ -312,8 +316,10 @@ pode apagar: é resto da versão antiga.
 
 **Os itens aparecem na lista, mas todos os campos mostram "—".**
 O cabeçalho daquela aba não foi reconhecido e o aplicativo leu outra linha no lugar dele.
-Confira se a linha de cabeçalho traz pelo menos duas colunas com nomes conhecidos, ou
-acrescente o nome que você usa em `SINONIMOS`, no `Config.gs`.
+Execute **`diagnosticarPlanilha`** pelo editor do Apps Script (menu de funções → Executar) e
+veja no registro de execução, aba por aba: em que linha o cabeçalho foi achado, quantos
+registros foram lidos e quais colunas não foram encontradas. Se o nome que você usa não
+estiver sendo reconhecido, acrescente-o em `SINONIMOS`, no `Config.gs`.
 
 **"Já existe um arquivo com esse nome" ao criar um script.**
 O arquivo HTML da página se chama `Interface`, e o Apps Script não aceita dois arquivos com o
@@ -353,7 +359,7 @@ trocar o atalho.
 
 | Arquivo | Para que serve |
 |---|---|
-| `Config.gs` | Planilha, tabelas, colunas, listas fixas e **quem pode entrar**. |
+| `Config.gs` | Planilha, tabelas, colunas, listas fixas, nomes equivalentes de coluna e **quem pode entrar**. |
 | `Acesso.gs` | Identifica a conta logada e barra quem não está na lista. |
 | `Pagina.gs` | Entrega a página do aplicativo e faz a ponte com ela. |
 | `Interface.html` | **Gerado** por `ferramentas/empacotar.js`. Não editar. |

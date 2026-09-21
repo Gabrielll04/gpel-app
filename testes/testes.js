@@ -117,6 +117,64 @@ teste('coluna solta ao lado do título não é confundida com cabeçalho', () =>
   conferirIgual(contexto.listar('CAD_CLIENTES').length, 1, 'e o cliente é lido');
 });
 
+teste('"Cliente / Razão Social" é entendida como a coluna de nome', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('CAD_CLIENTES');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | CADASTRO DE CLIENTES']]);
+  aba.getRange(4, 1, 1, 10).setValues([[
+    'Código', 'Cliente / Razão Social', 'Nome Fantasia', 'CNPJ/CPF', 'Município',
+    'Contato', 'Telefone', 'E-mail', 'Ativo?', 'Observações'
+  ]]);
+  aba.getRange(5, 1, 1, 10).setValues([[
+    'CL001', 'Unidade Prisional de Teste', 'UPT', '00.000.000/0001-00', 'Cidade',
+    'Fulano', '(00) 0000-0000', 'a@b.com', 'Sim', ''
+  ]]);
+  contexto.instalarPlanilha();
+
+  const cliente = contexto.listar('CAD_CLIENTES')[0];
+  conferirIgual(cliente['Razão Social'], 'Unidade Prisional de Teste', 'nome lido');
+  conferirIgual(cliente['Nome Fantasia'], 'UPT', 'coluna própria preservada');
+  conferirIgual(cliente['Código'], 'CL001', 'código lido');
+});
+
+teste('"Fornecedor / Razão Social" também é entendida', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('CAD_FORNECEDORES');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | CADASTRO DE FORNECEDORES']]);
+  aba.getRange(4, 1, 1, 8).setValues([[
+    'Código', 'Fornecedor / Razão Social', 'CNPJ', 'Contato', 'Telefone', 'E-mail', 'Ativo?', 'Observações'
+  ]]);
+  aba.getRange(5, 1, 1, 8).setValues([['FO001', 'Papelaria Central', '', '', '', '', 'Sim', '']]);
+  contexto.instalarPlanilha();
+  conferirIgual(contexto.listar('CAD_FORNECEDORES')[0]['Razão Social'], 'Papelaria Central', 'nome lido');
+});
+
+teste('nome de coluna curto não captura coluna parecida', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('PEDIDOS');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | PEDIDOS']]);
+  aba.getRange(4, 1, 1, 5).setValues([['Data', 'Data de Entrega', 'Cliente', 'Produto', 'Quantidade']]);
+  aba.getRange(5, 1, 1, 5).setValues([['2026-09-20', '2026-09-25', 'CL001', 'PA001', 10]]);
+  contexto.instalarPlanilha();
+
+  const pedido = contexto.listar('PEDIDOS')[0];
+  conferirIgual(pedido['Data'], '2026-09-20', 'a coluna Data é a Data mesmo');
+  conferirIgual(pedido['Prazo / Data Entrega'], '2026-09-25', 'e a entrega ficou na coluna certa');
+});
+
+teste('o diagnóstico diz onde está o cabeçalho e o que não encontrou', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('CAD_CLIENTES');
+  aba.getRange(4, 1, 1, 2).setValues([['Código', 'Cliente / Razão Social']]);
+  aba.getRange(5, 1, 1, 2).setValues([['CL001', 'Cliente Teste']]);
+  contexto.instalarPlanilha();
+
+  const relatorio = contexto.diagnosticarPlanilha();
+  conferir(relatorio.indexOf('CAD_CLIENTES: cabeçalho na linha 4') !== -1, 'informa a linha do cabeçalho');
+  conferir(relatorio.indexOf('1 registro(s)') !== -1, 'informa quantos registros leu');
+  conferir(relatorio.indexOf('PARAMETROS') === -1, 'não expõe a aba técnica');
+});
+
 teste('lê os itens mesmo com o cabeçalho fora da primeira linha', () => {
   const g = ambienteComLayoutDaEmpresa();
   const insumos = g.listar('CAD_INSUMOS');

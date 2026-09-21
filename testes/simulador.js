@@ -178,6 +178,7 @@ function carregarBackend(opcoes) {
       getActiveSpreadsheet: () => planilha
     },
     Utilities: { formatDate: formatarData },
+    Logger: { log: () => {} },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
     ContentService: {
       MimeType: { JSON: 'application/json' },

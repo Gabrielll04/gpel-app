@@ -84,10 +84,11 @@ function estruturaDe_(nomeTabela) {
       var linha = amostra[i].map(textoLimpo_);
       var preenchidas = 0;
       var reconhecidas = 0;
-      linha.forEach(function (celula) {
+      var traduzida = traduzirColunas_(linha, def, aceitos);
+      linha.forEach(function (celula, coluna) {
         if (!celula) return;
         preenchidas++;
-        if (aceitos[normalizarNome_(celula)]) reconhecidas++;
+        if (traduzida[coluna] !== celula || aceitos[normalizarNome_(celula)]) reconhecidas++;
       });
       // Só é cabeçalho quem traz pelo menos dois nomes de coluna conhecidos.
       // Sem isso, uma faixa de título com uma coluna solta ao lado passaria
@@ -106,20 +107,56 @@ function estruturaDe_(nomeTabela) {
       if (restaurada) estrutura = restaurada;
     }
 
-    // Traduz os nomes da planilha para os nomes usados pelo sistema.
-    var jaUsados = {};
-    estrutura.colunas = estrutura.colunas.map(function (nomeNaPlanilha) {
-      var canonico = aceitos[normalizarNome_(nomeNaPlanilha)];
-      if (canonico && !jaUsados[canonico]) {
-        jaUsados[canonico] = true;
-        return canonico;
-      }
-      return nomeNaPlanilha; // coluna própria da planilha: fica como está
-    });
+    estrutura.colunas = traduzirColunas_(estrutura.colunas, def, aceitos);
   }
 
   _estruturas[nomeTabela] = estrutura;
   return estrutura;
+}
+
+/**
+ * Traduz os nomes da planilha para os nomes usados pelo sistema.
+ *
+ * Primeiro pelo nome exato (ignorando acento, ponto e caixa) e pelos apelidos
+ * de SINONIMOS. Depois, para o que sobrou, aceita o nome do sistema contido no
+ * nome da planilha: é assim que "Cliente / Razão Social" vira "Razão Social".
+ * Essa segunda passada exige um nome longo o bastante para não confundir
+ * colunas curtas — "Data" não pode capturar "Data de Entrega".
+ */
+function traduzirColunas_(colunas, def, aceitos) {
+  var jaUsados = {};
+  var resultado = colunas.map(function (nomeNaPlanilha) {
+    var canonico = aceitos[normalizarNome_(nomeNaPlanilha)];
+    if (canonico && !jaUsados[canonico]) {
+      jaUsados[canonico] = true;
+      return canonico;
+    }
+    return null; // decide na segunda passada
+  });
+
+  var TAMANHO_SEGURO = 8; // "razaosocial" tem 11; "data", 4
+  resultado = resultado.map(function (canonico, i) {
+    if (canonico) return canonico;
+    var naPlanilha = normalizarNome_(colunas[i]);
+    if (!naPlanilha) return colunas[i];
+
+    var melhor = '';
+    (def.campos || []).forEach(function (campo) {
+      var alvo = normalizarNome_(campo.nome);
+      if (alvo.length < TAMANHO_SEGURO) return;
+      if (jaUsados[campo.nome]) return;
+      if (naPlanilha.indexOf(alvo) === -1) return;
+      if (alvo.length > normalizarNome_(melhor).length) melhor = campo.nome;
+    });
+
+    if (melhor) {
+      jaUsados[melhor] = true;
+      return melhor;
+    }
+    return colunas[i]; // coluna própria da planilha: fica como está
+  });
+
+  return resultado;
 }
 
 /**
