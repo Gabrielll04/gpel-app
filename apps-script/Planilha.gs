@@ -70,7 +70,9 @@ function estruturaDe_(nomeTabela) {
   var aba = abaDe(nomeTabela);
   var def = TABELAS[nomeTabela];
   var largura = Math.max(aba.getLastColumn(), 1);
-  var altura = Math.min(aba.getLastRow(), 15); // o cabeçalho não fica longe do topo
+  // Olha sempre as primeiras linhas, não só as que têm conteúdo: uma faixa
+  // reservada ao cabeçalho pode estar pintada e vazia, e getLastRow não a vê.
+  var altura = Math.min(15, aba.getMaxRows ? aba.getMaxRows() : 15);
   var estrutura = { linha: 1, colunas: [] };
 
   if (altura >= 1) {
@@ -87,12 +89,21 @@ function estruturaDe_(nomeTabela) {
         preenchidas++;
         if (aceitos[normalizarNome_(celula)]) reconhecidas++;
       });
-      if (preenchidas < 2) continue; // faixa de título ocupa uma célula só
+      // Só é cabeçalho quem traz pelo menos dois nomes de coluna conhecidos.
+      // Sem isso, uma faixa de título com uma coluna solta ao lado passaria
+      // por cabeçalho e os dados seriam gravados por cima do título.
+      if (preenchidas < 2 || reconhecidas < 2) continue;
       var pontuacao = reconhecidas * 10 + preenchidas;
       if (pontuacao > melhorPontuacao) {
         melhorPontuacao = pontuacao;
         estrutura = { linha: i + 1, colunas: linha };
       }
+    }
+
+    // Nenhuma linha parece cabeçalho: ou a aba é nova, ou o cabeçalho sumiu.
+    if (melhorPontuacao < 0) {
+      var restaurada = restaurarCabecalho_(aba, def, amostra);
+      if (restaurada) estrutura = restaurada;
     }
 
     // Traduz os nomes da planilha para os nomes usados pelo sistema.
@@ -109,6 +120,48 @@ function estruturaDe_(nomeTabela) {
 
   _estruturas[nomeTabela] = estrutura;
   return estrutura;
+}
+
+/**
+ * Escreve o cabeçalho quando a aba ficou sem nenhum.
+ *
+ * Só acontece em aba sem dados: havendo conteúdo que não se reconhece, é mais
+ * seguro não inventar cabeçalho nenhum do que rotular a coluna errada.
+ *
+ * A linha escolhida é, em ordem: uma faixa pintada e vazia (a linha que a
+ * planilha reservou para o cabeçalho), a primeira linha vazia depois do
+ * título, ou a primeira linha.
+ */
+function restaurarCabecalho_(aba, def, amostra) {
+  if (!def.campos || !def.campos.length) return null;
+
+  var temDados = amostra.some(function (linha) {
+    return linha.filter(function (c) { return textoLimpo_(c) !== ''; }).length >= 3;
+  });
+  if (temDados) return null;
+
+  var alvo = 0;
+  var fundos = [];
+  try {
+    fundos = aba.getRange(1, 1, amostra.length, Math.max(aba.getLastColumn(), 1)).getBackgrounds();
+  } catch (e) {
+    fundos = [];
+  }
+
+  for (var i = 0; i < amostra.length; i++) {
+    var vazia = amostra[i].every(function (c) { return textoLimpo_(c) === ''; });
+    if (!vazia) continue;
+    var pintadas = (fundos[i] || []).filter(function (cor) {
+      return cor && cor !== '#ffffff' && cor !== '#FFFFFF';
+    }).length;
+    if (pintadas >= 2) { alvo = i + 1; break; }   // faixa reservada ao cabeçalho
+    if (!alvo) alvo = i + 1;                      // primeira linha vazia serve de reserva
+  }
+  if (!alvo) alvo = amostra.length + 1;
+
+  var nomes = def.campos.map(function (campo) { return campo.nome; });
+  aba.getRange(alvo, 1, 1, nomes.length).setValues([nomes]).setFontWeight('bold');
+  return { linha: alvo, colunas: nomes };
 }
 
 /** Acrescenta, ao lado do cabeçalho, as colunas previstas que ainda não existem. */

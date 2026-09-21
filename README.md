@@ -303,6 +303,13 @@ para a tela de login, que não traz cabeçalho de CORS. Um site de fora não con
 por você. Abra o aplicativo pela URL que termina em `/exec`. Quem tiver o atalho antigo no
 celular vê uma tela explicando isso, com um botão que leva ao endereço certo.
 
+**A aba ESTOQUE_ATUAL ficou sem cabeçalho.**
+Versões antigas do código limpavam a aba a partir da segunda linha e apagavam o cabeçalho de
+quem o tinha mais abaixo. O código atual só limpa da linha seguinte ao cabeçalho, e recria o
+cabeçalho quando a aba está sem nenhum — na faixa pintada que a planilha reservou para ele.
+Se sobrou alguma coluna solta na linha do título (por exemplo `Estoque Mín.` na linha 1),
+pode apagar: é resto da versão antiga.
+
 **Os itens aparecem na lista, mas todos os campos mostram "—".**
 O cabeçalho daquela aba não foi reconhecido e o aplicativo leu outra linha no lugar dele.
 Confira se a linha de cabeçalho traz pelo menos duas colunas com nomes conhecidos, ou

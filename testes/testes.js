@@ -88,6 +88,35 @@ function ambienteComLayoutDaEmpresa() {
   return contexto;
 }
 
+teste('aba com cabeçalho apagado: o sistema o recria na faixa reservada', () => {
+  const { contexto, planilha } = carregarBackend();
+  // Como ficou a aba ESTOQUE_ATUAL: título em cima, faixa do cabeçalho vazia
+  // (pintada) e uma coluna solta na linha 1, sobra de uma versão antiga.
+  const aba = planilha.insertSheet('ESTOQUE_ATUAL');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | ESTOQUE ATUAL — CALCULADO PELAS MOVIMENTAÇÕES']]);
+  aba.getRange(1, 10, 1, 1).setValues([['Estoque Mín.']]);
+  aba.getRange(4, 1, 1, 9).setBackground('#38761d');
+
+  contexto.instalarPlanilha();
+  const estrutura = contexto.estruturaDe_('ESTOQUE_ATUAL');
+  conferirIgual(estrutura.linha, 4, 'o cabeçalho voltou para a faixa pintada');
+  conferir(estrutura.colunas.indexOf('Saldo Atual') !== -1, 'com as colunas do estoque');
+  conferirIgual(aba.getRange(1, 1, 1, 1).getValues()[0][0], 'GPEL | ESTOQUE ATUAL — CALCULADO PELAS MOVIMENTAÇÕES', 'título preservado');
+});
+
+teste('coluna solta ao lado do título não é confundida com cabeçalho', () => {
+  const { contexto, planilha } = carregarBackend();
+  const aba = planilha.insertSheet('CAD_CLIENTES');
+  aba.getRange(1, 1, 1, 1).setValues([['GPEL | CADASTRO DE CLIENTES']]);
+  aba.getRange(1, 8, 1, 1).setValues([['Observações']]); // sobra de versão antiga
+  aba.getRange(4, 1, 1, 2).setValues([['Código', 'Razão Social']]);
+  aba.getRange(5, 1, 1, 2).setValues([['CL001', 'Unidade Prisional']]);
+
+  contexto.instalarPlanilha();
+  conferirIgual(contexto.estruturaDe_('CAD_CLIENTES').linha, 4, 'cabeçalho é a linha 4');
+  conferirIgual(contexto.listar('CAD_CLIENTES').length, 1, 'e o cliente é lido');
+});
+
 teste('lê os itens mesmo com o cabeçalho fora da primeira linha', () => {
   const g = ambienteComLayoutDaEmpresa();
   const insumos = g.listar('CAD_INSUMOS');

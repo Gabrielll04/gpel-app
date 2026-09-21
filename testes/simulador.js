@@ -11,6 +11,7 @@ function criarPlanilhaFalsa() {
 
   function criarAba(nome) {
     const dados = []; // matriz de linhas
+    const fundos = {}; // 'linha,coluna' -> cor
 
     function garantir(linha, coluna) {
       while (dados.length < linha) dados.push([]);
@@ -34,6 +35,8 @@ function criarPlanilhaFalsa() {
       }, 0),
       setFrozenRows: () => aba,
       getFrozenRows: () => 1,
+      getMaxRows: () => 1000,      // a planilha nasce com mil linhas, como no Sheets
+      getMaxColumns: () => 26,
       deleteRow: (linha) => { dados.splice(linha - 1, 1); },
       getRange: (linha, coluna, alturaOpcional, larguraOpcional) => {
         const altura = alturaOpcional || 1;
@@ -76,7 +79,24 @@ function criarPlanilhaFalsa() {
             return intervalo;
           },
           setFontWeight: () => intervalo,
-          setNumberFormat: () => intervalo
+          setNumberFormat: () => intervalo,
+          setBackground: (cor) => {
+            for (let i = 0; i < altura; i++) {
+              for (let j = 0; j < largura; j++) fundos[(linha + i) + ',' + (coluna + j)] = cor;
+            }
+            return intervalo;
+          },
+          getBackgrounds: () => {
+            const saida = [];
+            for (let i = 0; i < altura; i++) {
+              const linhaDeCores = [];
+              for (let j = 0; j < largura; j++) {
+                linhaDeCores.push(fundos[(linha + i) + ',' + (coluna + j)] || '#ffffff');
+              }
+              saida.push(linhaDeCores);
+            }
+            return saida;
+          }
         };
         return intervalo;
       },
