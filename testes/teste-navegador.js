@@ -263,6 +263,35 @@ function popular(g) {
   conferir(g.listar('PEDIDOS').length === pedidosAntes + 1, 'gravação pela ponte google.script.run funciona');
   await paginaGoogle.close();
 
+  console.log('\nFalha ao carregar os dados (mensagem tem de ficar na tela)');
+  const paginaFalha = await contexto.newPage();
+  paginaFalha.on('pageerror', (e) => erros.push('falha: ' + e.message));
+  await paginaFalha.exposeFunction('__chamarBackendComErro', () =>
+    JSON.stringify({ ok: false, erro: 'You do not have permission to access the requested document.' }));
+  await paginaFalha.addInitScript(() => {
+    function construtor() {
+      let sucesso = null;
+      let falha = null;
+      const objeto = {
+        withSuccessHandler: (f) => { sucesso = f; return objeto; },
+        withFailureHandler: (f) => { falha = f; return objeto; },
+        apiGet: () => window.__chamarBackendComErro().then((r) => sucesso(r), (e) => falha && falha(e)),
+        apiPost: () => window.__chamarBackendComErro().then((r) => sucesso(r), (e) => falha && falha(e))
+      };
+      return objeto;
+    }
+    window.google = { script: { run: construtor() } };
+    try { window.localStorage.clear(); } catch (e) {}
+  });
+  await paginaFalha.goto('http://localhost:' + PORTA + '/interface-empacotada.html');
+  await paginaFalha.waitForTimeout(900);
+  const textoFalha = await paginaFalha.textContent('#tela');
+  conferir(textoFalha.indexOf('não consegui carregar') !== -1 || textoFalha.indexOf('dados não vieram') !== -1,
+    'a tela diz que os dados não vieram');
+  conferir(textoFalha.indexOf('do not have permission') !== -1, 'mostra a mensagem crua do servidor');
+  conferir(textoFalha.indexOf('Compartilhe a planilha') !== -1, 'sugere a causa provável');
+  await paginaFalha.close();
+
   console.log('\nVisão de computador');
   const paginaGrande = await contexto.newPage();
   paginaGrande.on('pageerror', (e) => erros.push('desktop: ' + e.message));
