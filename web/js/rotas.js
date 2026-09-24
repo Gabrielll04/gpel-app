@@ -100,6 +100,10 @@ GPEL.rotas = (function () {
 
     var voltar = document.getElementById('botao-voltar');
     voltar.hidden = REFERENCIA.indexOf(atual.rota) === -1;
+    // Em tela de referência o botão voltar ocupa o lugar da marca: no celular
+    // não há espaço para os dois e o título ficava cortado.
+    var marca = document.querySelector('.cabecalho__marca');
+    if (marca) marca.hidden = !voltar.hidden;
 
     var area = ui.limpar(document.getElementById('tela'));
 

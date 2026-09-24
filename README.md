@@ -174,6 +174,21 @@ do cabeçalho, as colunas reconhecidas e as que faltaram.
 
 ---
 
+### Dados de teste
+
+Para ver o aplicativo com movimento antes de lançar dados reais, execute
+**`carregarDadosDeTeste`** pelo editor do Apps Script. Ele monta cerca de 40 dias de operação:
+13 pedidos em todas as situações (dois atrasados), 10 produções, 10 compras, entregas, uma
+perda, estoque de abertura por inventário e uma contagem aguardando aprovação.
+
+Tudo passa pelas mesmas funções do aplicativo — cada entrada e saída vira linha em
+`MOV_ESTOQUE`, nada é escrito direto no saldo. Produtos e insumos que já existem são
+reaproveitados; clientes e fornecedores de teste levam "(TESTE)" no nome.
+
+**`apagarDadosDeTeste`** remove exatamente o que a carga criou (os IDs ficam anotados nas
+propriedades do script). Dados reais, inclusive os lançados depois da carga, não são tocados.
+Rode a limpeza antes de começar a usar de verdade.
+
 ## 6. Como o sistema funciona
 
 ### Saldo de estoque
@@ -205,6 +220,17 @@ e tocar em **Aprovar ajuste**. A aprovação:
 3. recalcula o estoque.
 
 Aprovar duas vezes é recusado — a própria movimentação já gerada serve de trava.
+
+### Saídas do dia a dia (como lançar hoje)
+
+Enquanto as automações abaixo não estiverem ligadas, **marcar um pedido como Entregue ou uma
+produção como Concluída não mexe no estoque**. A saída da entrega, a entrada da produção e o
+consumo de bobina são lançados em **Estoque → Movimentar**, informando o pedido ou a produção
+em *Documento*. É assim que a carga de teste faz, e é o que mantém o histórico explicando o
+saldo.
+
+O aplicativo aceita saída maior que o saldo — o saldo fica negativo. É proposital: o físico
+existe, faltou lançar a entrada. Saldo negativo na conferência é sinal de entrada esquecida.
 
 ### Automações previstas (ainda não ligadas)
 

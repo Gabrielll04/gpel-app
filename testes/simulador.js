@@ -179,6 +179,15 @@ function carregarBackend(opcoes) {
     },
     Utilities: { formatDate: formatarData },
     Logger: { log: () => {} },
+    PropertiesService: (() => {
+      const guardadas = {};
+      const propriedades = {
+        getProperty: (chave) => (chave in guardadas ? guardadas[chave] : null),
+        setProperty: (chave, valor) => { guardadas[chave] = String(valor); return propriedades; },
+        deleteProperty: (chave) => { delete guardadas[chave]; return propriedades; }
+      };
+      return { getScriptProperties: () => propriedades };
+    })(),
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
     ContentService: {
       MimeType: { JSON: 'application/json' },

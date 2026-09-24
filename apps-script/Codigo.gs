@@ -121,7 +121,7 @@ function criar_(nomeTabela, valores, usuario) {
     var movimento = gerarEntradaDaCompra_(registro, usuario);
     if (movimento) extras.movimentoGerado = movimento['ID Movimento'];
   }
-  if (nomeTabela === 'MOV_ESTOQUE' || nomeTabela === 'COMPRAS') recalcularEstoque();
+  if (nomeTabela === 'MOV_ESTOQUE' || nomeTabela === 'COMPRAS') recalcularSeLiberado_();
 
   return { registro: limparTecnicos_(nomeTabela, registro), extras: extras };
 }
@@ -145,7 +145,7 @@ function atualizar_(nomeTabela, id, valores) {
   var final = atualizarLinha(nomeTabela, anterior._linha, registro, anterior);
 
   // Editar uma compra NÃO gera nova entrada de estoque (a entrada já existe).
-  if (nomeTabela === 'COMPRAS') recalcularEstoque();
+  if (nomeTabela === 'COMPRAS') recalcularSeLiberado_();
 
   return { registro: limparTecnicos_(nomeTabela, final) };
 }

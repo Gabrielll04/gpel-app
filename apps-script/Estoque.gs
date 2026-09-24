@@ -100,6 +100,18 @@ function calcularEstoque() {
 }
 
 /**
+ * Quando verdadeiro, as gravações não regravam ESTOQUE_ATUAL a cada passo.
+ * Serve para cargas em lote (dados de teste, importações): quem liga o
+ * adiamento é obrigado a chamar recalcularEstoque() no final.
+ * No uso normal do aplicativo fica sempre desligado.
+ */
+var _adiarRecalculo = false;
+
+function recalcularSeLiberado_() {
+  if (!_adiarRecalculo) recalcularEstoque();
+}
+
+/**
  * Calcula E regrava a aba ESTOQUE_ATUAL.
  * Só é chamada quando o saldo muda (movimentação, compra, ajuste de inventário)
  * ou quando alguém pede o recálculo manualmente.
@@ -241,7 +253,7 @@ function aprovarAjusteInventario(idInventario, responsavel) {
     'Observações': 'Ajuste de inventário aprovado. Saldo anterior: ' + saldoAtual + ' / Contagem: ' + contagem
   });
 
-  recalcularEstoque();
+  recalcularSeLiberado_();
   return { movimento: movimento, diferenca: diferenca, saldoAnterior: saldoAtual };
 }
 

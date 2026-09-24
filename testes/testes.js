@@ -685,6 +685,154 @@ teste('responsável digitado pela usuária é respeitado', () => {
   conferirIgual(g.listar('MOV_ESTOQUE')[0]['Responsável'], 'Ana', 'nome informado prevalece');
 });
 
+/* ----------------------------------------------------- Dados de teste */
+
+console.log('\nDados de teste (carga e limpeza)');
+
+function ambienteComDadosDeTeste() {
+  const { contexto } = carregarBackend();
+  contexto.instalarPlanilha();
+  contexto.carregarDadosDeTeste();
+  return contexto;
+}
+
+function saldoNaAba(g, codigo) {
+  const linha = g.listar('ESTOQUE_ATUAL').filter((l) => l['Código'] === codigo)[0];
+  return linha ? linha['Saldo Atual'] : undefined;
+}
+
+teste('carga monta o cenário completo', () => {
+  const g = ambienteComDadosDeTeste();
+  conferirIgual(g.listar('PEDIDOS').length, 13, 'pedidos');
+  conferirIgual(g.listar('PRODUCAO').length, 10, 'produções');
+  conferirIgual(g.listar('COMPRAS').length, 10, 'compras');
+  conferirIgual(g.listar('MOV_ESTOQUE').length, 33, 'movimentações');
+  const situacoes = new Set(g.listar('PEDIDOS').map((p) => p['Status']));
+  conferirIgual(situacoes.size, 8, 'pedidos nas oito situações possíveis');
+});
+
+teste('saldos finais batem com a conta feita à mão', () => {
+  const g = ambienteComDadosDeTeste();
+  // bobina PH: 2500 + 1500 comprados - (820 + 520 + 380 + 850) consumidos
+  conferirIgual(saldoNaAba(g, 'MP-BOB-PH'), 1430, 'bobina de papel higiênico');
+  // PH 300m: 112 + 118 produzidos - 60 entregues - 5 perdidos
+  conferirIgual(saldoNaAba(g, 'FAB-PH300'), 165, 'papel higiênico 300m');
+  // bobina lençol: 150 de abertura (inventário) + 400 comprados - 95 - 88 consumidos
+  conferirIgual(saldoNaAba(g, 'MP-BOB-LEN'), 367, 'bobina de lençol');
+  conferirIgual(saldoNaAba(g, 'REV-INTER'), 20, 'interfolha: 50 comprados - 30 entregues');
+});
+
+teste('cenário mostra as três situações de estoque', () => {
+  const g = ambienteComDadosDeTeste();
+  const status = (c) => g.listar('ESTOQUE_ATUAL').filter((l) => l['Código'] === c)[0]['Status'];
+  conferirIgual(status('MP-BOB-PH'), 'REPOR', 'abaixo do mínimo');
+  conferirIgual(status('FAB-PH300'), 'OK', 'acima do mínimo');
+  conferirIgual(status('EMB-LEN'), 'DEFINIR MÍNIMO', 'sem mínimo');
+});
+
+teste('carregar duas vezes é recusado', () => {
+  const g = ambienteComDadosDeTeste();
+  esperarErro(() => g.carregarDadosDeTeste(), 'já estão carregados');
+});
+
+teste('limpeza remove só o que a carga criou e preserva dados reais', () => {
+  const { contexto: g } = carregarBackend();
+  g.instalarPlanilha();
+  // Dado real, anterior à carga
+  g.criar_('CAD_CLIENTES', { 'Código': 'REAL-01', 'Razão Social': 'Cliente de verdade' });
+  g.criar_('CAD_INSUMOS', { 'Código': 'MP-BOB-PH', 'Item': 'Bobina PH real', 'Unidade': 'kg' });
+  g.criar_('MOV_ESTOQUE', {
+    'Data': '2026-01-01', 'Classe': 'Insumo', 'Código Item': 'MP-BOB-PH',
+    'Entrada/Saída': 'Entrada', 'Origem': 'Compra', 'Quantidade': 77
+  });
+
+  g.carregarDadosDeTeste();
+
+  // Dado real, lançado depois da carga
+  g.criar_('MOV_ESTOQUE', {
+    'Data': '2026-01-02', 'Classe': 'Insumo', 'Código Item': 'MP-BOB-PH',
+    'Entrada/Saída': 'Entrada', 'Origem': 'Compra', 'Quantidade': 3
+  });
+
+  g.apagarDadosDeTeste();
+
+  conferirIgual(g.listar('PEDIDOS').length, 0, 'pedidos de teste removidos');
+  conferirIgual(g.listar('COMPRAS').length, 0, 'compras de teste removidas');
+  conferirIgual(g.listar('MOV_ESTOQUE').length, 2, 'só as duas movimentações reais ficaram');
+  conferirIgual(g.saldoDoItem('MP-BOB-PH'), 80, 'saldo real intacto: 77 + 3');
+  conferir(g.buscarPorId('CAD_CLIENTES', 'REAL-01'), 'cliente real preservado');
+  conferir(g.buscarPorId('CAD_INSUMOS', 'MP-BOB-PH'), 'insumo que já existia não é apagado');
+  conferir(!g.buscarPorId('CAD_CLIENTES', 'TESTE-CLI-01'), 'cliente de teste removido');
+  conferirIgual(g.apagarDadosDeTeste(), 'Não há dados de teste carregados.', 'limpar de novo não faz nada');
+});
+
+/* ------------------------------------------------ Auditoria do estoque */
+
+console.log('\nAuditoria do estoque (livro-razão)');
+
+teste('saldo de cada item é exatamente a soma das movimentações', () => {
+  const g = ambienteComDadosDeTeste();
+  const somaPorItem = {};
+  g.listar('MOV_ESTOQUE').forEach((m) => {
+    const codigo = m['Código Item'];
+    somaPorItem[codigo] = (somaPorItem[codigo] || 0) + Number(m['Qtd. Assinada']);
+  });
+  g.listar('ESTOQUE_ATUAL').forEach((linha) => {
+    const esperado = somaPorItem[linha['Código']] || 0;
+    conferir(Math.abs(Number(linha['Saldo Atual']) - esperado) < 1e-9,
+      linha['Código'] + ': aba mostra ' + linha['Saldo Atual'] + ', movimentações somam ' + esperado);
+  });
+});
+
+teste('saída é registrada como movimentação, com sinal negativo', () => {
+  const g = ambienteComDadosDeTeste();
+  const saidas = g.listar('MOV_ESTOQUE').filter((m) => m['Entrada/Saída'] === 'Saída');
+  conferir(saidas.length > 0, 'há saídas no cenário');
+  saidas.forEach((m) => {
+    conferir(Number(m['Qtd. Assinada']) === -Number(m['Quantidade']), 'saída ' + m['ID Movimento'] + ' com sinal negativo');
+    conferir(Number(m['Quantidade']) > 0, 'quantidade sempre positiva: o sentido vem do tipo');
+  });
+});
+
+teste('toda movimentação aponta o documento que a originou', () => {
+  const g = ambienteComDadosDeTeste();
+  g.listar('MOV_ESTOQUE').forEach((m) => {
+    conferir(String(m['Documento Ref.']).trim() !== '', 'movimentação ' + m['ID Movimento'] + ' sem documento');
+    conferir(String(m['Responsável']).trim() !== '', 'movimentação ' + m['ID Movimento'] + ' sem responsável');
+  });
+});
+
+teste('o histórico só cresce: nenhuma operação altera ou apaga movimentação antiga', () => {
+  const g = ambienteComDadosDeTeste();
+  const antes = g.listar('MOV_ESTOQUE').map((m) => JSON.stringify(m));
+
+  // Operações do dia a dia que mexem em coisas ligadas ao estoque
+  const compra = g.listar('COMPRAS')[0];
+  g.atualizar_('COMPRAS', compra['ID Compra'], { 'Quantidade': 9999 });
+  const pedido = g.listar('PEDIDOS').filter((p) => p['Status'] === 'Pronto')[0];
+  g.atualizar_('PEDIDOS', pedido['ID Pedido'], { 'Status': 'Entregue' });
+  const pendente = g.listarInventarios().filter((i) => i['Ajuste?'] === 'Sim' && !i._ajusteAprovado)[0];
+  g.aprovarAjusteInventario(pendente['ID Inventário'], 'Auditoria');
+  const qualquer = g.listar('MOV_ESTOQUE')[0];
+  esperarErro(() => g.atualizar_('MOV_ESTOQUE', qualquer['ID Movimento'], { 'Quantidade': 1 }), 'não podem ser alteradas');
+  esperarErro(() => g.excluir_('MOV_ESTOQUE', qualquer['ID Movimento']), 'não pode ser excluído');
+
+  const depois = g.listar('MOV_ESTOQUE').map((m) => JSON.stringify(m));
+  antes.forEach((linha, i) => conferirIgual(depois[i], linha, 'movimentação antiga ' + i + ' intacta'));
+  conferirIgual(depois.length, antes.length + 1, 'só o ajuste aprovado entrou');
+});
+
+teste('contagem de inventário não mexe no saldo até ser aprovada', () => {
+  const g = ambienteComDadosDeTeste();
+  const pendente = g.listarInventarios().filter((i) => i['Ajuste?'] === 'Sim' && !i._ajusteAprovado)[0];
+  conferirIgual(saldoNaAba(g, 'FAB-PH300'), 165, 'saldo segue o das movimentações');
+  conferirIgual(Number(pendente['Contagem Física']), 162, 'embora a contagem tenha achado 162');
+  g.aprovarAjusteInventario(pendente['ID Inventário'], 'Auditoria');
+  conferirIgual(g.saldoDoItem('FAB-PH300'), 162, 'depois da aprovação, o saldo vai para a contagem');
+  const ajuste = g.listar('MOV_ESTOQUE').filter((m) => m['Documento Ref.'] === pendente['ID Inventário'])[0];
+  conferirIgual(ajuste['Origem'], 'Inventário -', 'e a diferença fica registrada como movimentação');
+});
+
 /* ---------------------------------------------------------------- API */
 
 console.log('\nAPI');

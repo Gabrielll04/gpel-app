@@ -317,6 +317,30 @@ function popular(g) {
   conferir(textoPonte.indexOf('instalarPlanilha') !== -1, 'lista o que o servidor está oferecendo');
   await paginaSemPonte.close();
 
+  console.log('\nCenário de teste da GPEL (Gestão com dados realistas)');
+  const cenario = carregarBackend().contexto;
+  cenario.instalarPlanilha();
+  cenario.carregarDadosDeTeste();
+  const ctxCenario = await navegador.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctxCenario.route('**/exec*', async (rota) => {
+    const url = new URL(rota.request().url());
+    const parametros = {};
+    url.searchParams.forEach((valor, chave) => { parametros[chave] = valor; });
+    await rota.fulfill({ status: 200, contentType: 'application/json', body: cenario.doGet({ parameter: parametros }).getContent() });
+  });
+  await ctxCenario.addInitScript(() => { window.localStorage.setItem('gpel.urlApi', 'https://exemplo.local/exec'); });
+  const paginaCenario = await ctxCenario.newPage();
+  paginaCenario.on('pageerror', (e) => erros.push('cenário: ' + e.message));
+  await paginaCenario.goto('http://localhost:' + PORTA + '/index.html#/gestao');
+  await paginaCenario.waitForTimeout(900);
+  // a moeda em pt-BR usa espaço não separável depois do R$
+  const gestao = (await paginaCenario.textContent('#tela')).replace(/\u00a0/g, ' ');
+  // Encerradas: meta 710, produzido 588. Planejada e em andamento ficam de fora.
+  conferir(gestao.indexOf('82,8%') !== -1, 'atingimento considera só produções encerradas (82,8%)');
+  conferir(gestao.indexOf('R$ 10.170,00 a faturar') !== -1, 'valor em aberto soma os pedidos não entregues');
+  conferir(gestao.indexOf('Papel higiênico 300m') !== -1 && gestao.indexOf('Curva ABC') !== -1, 'curva ABC montada com os pedidos entregues');
+  await ctxCenario.close();
+
   console.log('\nVisão de computador');
   const paginaGrande = await contexto.newPage();
   paginaGrande.on('pageerror', (e) => erros.push('desktop: ' + e.message));

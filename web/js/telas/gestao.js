@@ -57,7 +57,14 @@ GPEL.telas.gestao = (function () {
     var horas = soma(producoes, function (p) { return p['Horas']; });
     var horasHomem = soma(producoes, function (p) { return (Number(p['Horas']) || 0) * (Number(p['Pessoas']) || 0); });
     var perdas = soma(producoes, function (p) { return p['Perdas (kg)']; });
-    var comMeta = producoes.filter(function (p) { return (Number(p['Meta']) || 0) > 0; });
+    // Atingimento só mede produção que já terminou: concluída, ou parada no
+    // meio (essa conta contra a meta). Planejada e em andamento ainda não
+    // tiveram chance de cumprir a meta — contá-las como zero puxa o indicador
+    // para baixo sem motivo.
+    var ENCERRADAS = ['Concluída', 'Parada'];
+    var comMeta = producoes.filter(function (p) {
+      return (Number(p['Meta']) || 0) > 0 && ENCERRADAS.indexOf(String(p['Status'])) !== -1;
+    });
     var metaTotal = soma(comMeta, function (p) { return p['Meta']; });
     var produzidoComMeta = soma(comMeta, function (p) { return p['Produzido']; });
 
@@ -89,7 +96,7 @@ GPEL.telas.gestao = (function () {
         ui.indicador('Produção por hora', horas > 0 ? ui.numero(produzido / horas, 2) : '—', 'média do período'),
         ui.indicador('Produção por hora/pessoa', horasHomem > 0 ? ui.numero(produzido / horasHomem, 2) : '—', 'média do período'),
         ui.indicador('Atingimento da meta', metaTotal > 0 ? ui.numero((produzidoComMeta / metaTotal) * 100, 1) + '%' : '—',
-          'perdas: ' + ui.numero(perdas, 2) + ' kg', metaTotal > 0 && produzidoComMeta < metaTotal)
+          comMeta.length + ' produções encerradas · perdas: ' + ui.numero(perdas, 2) + ' kg', metaTotal > 0 && produzidoComMeta < metaTotal)
       ]),
       linhas.length
         ? el('div', { style: 'margin-top:12px' }, [ui.tabela([
