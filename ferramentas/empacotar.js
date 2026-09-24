@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const versoes = require('./versoes');
 
 const RAIZ = path.join(__dirname, '..');
 const WEB = path.join(RAIZ, 'web');
@@ -65,13 +66,25 @@ const pacote = aviso + html;
 // Serve para não publicar uma versão antiga sem perceber.
 if (process.argv.includes('--conferir')) {
   const atual = fs.existsSync(SAIDA) ? fs.readFileSync(SAIDA, 'utf8') : '';
+  let falhou = false;
   if (atual !== pacote) {
     console.error('Interface.html está desatualizado. Rode: node ferramentas/empacotar.js');
-    process.exit(1);
+    falhou = true;
   }
-  console.log('Interface.html está em dia com a pasta web/.');
+  const semMarca = versoes.conferir();
+  if (semMarca.length) {
+    console.error('Marca de versão desatualizada em: ' + semMarca.join(', ') + '. Rode: node ferramentas/empacotar.js');
+    falhou = true;
+  }
+  if (falhou) process.exit(1);
+  console.log('Interface.html e marcas de versão em dia.');
   process.exit(0);
 }
 
 fs.writeFileSync(SAIDA, pacote);
 console.log('Interface.html gerado: ' + Math.round(Buffer.byteLength(pacote) / 1024) + ' KB');
+
+const alterados = versoes.atualizar();
+console.log(alterados.length
+  ? 'Marcas de versão atualizadas. Arquivos para colar no Apps Script: ' + alterados.join(', ')
+  : 'Marcas de versão em dia: nenhum .gs mudou.');

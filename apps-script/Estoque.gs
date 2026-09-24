@@ -1,3 +1,4 @@
+var VERSAO__ESTOQUE = '09392daa'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Estoque.
  *

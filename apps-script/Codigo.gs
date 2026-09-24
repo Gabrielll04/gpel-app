@@ -1,3 +1,4 @@
+var VERSAO__CODIGO = 'ea6f963a'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Web App (API).
  *
@@ -20,6 +21,7 @@ function doGet(e) {
 
   return responder_(function () {
     var p = parametros;
+    conferirEntrega_();
     conferirAcesso_(p.token);
     var acao = p.action;
 
@@ -67,6 +69,7 @@ function doPost(e) {
   return responder_(function () {
     var corpo = {};
     if (e && e.postData && e.postData.contents) corpo = JSON.parse(e.postData.contents);
+    conferirEntrega_();
     conferirAcesso_(corpo.token);
 
     // Quem assina a operação é a conta que fez login, não o que o aplicativo diz.
@@ -237,6 +240,18 @@ function limparTecnicos_(nomeTabela, registro) {
   return copia;
 }
 
+/**
+ * Garante que todos os arquivos colados no editor são da mesma entrega.
+ * Arquivo desencontrado já apagou cabeçalho de planilha e travou gravações:
+ * melhor recusar com o nome do arquivo do que quebrar no meio do caminho.
+ */
+function conferirEntrega_() {
+  if (typeof conferirVersoes_ !== 'function') {
+    throw new Error('Falta o arquivo Versoes.gs no Apps Script. Ele faz parte da entrega: cole-o junto com os demais.');
+  }
+  conferirVersoes_();
+}
+
 /** A tabela tem essa coluna? */
 function temCampo_(def, nomeCampo) {
   return (def.campos || []).some(function (campo) { return campo.nome === nomeCampo; });
@@ -273,6 +288,15 @@ function responder_(funcao) {
  */
 function diagnosticarPlanilha() {
   var relatorio = [];
+
+  if (typeof estadoDasVersoes_ !== 'function') {
+    relatorio.push('ARQUIVOS: falta o Versoes.gs — não dá para conferir se os arquivos são da mesma entrega.');
+  } else {
+    var versoes = estadoDasVersoes_();
+    relatorio.push(versoes.problemas.length
+      ? 'ARQUIVOS DESATUALIZADOS (entrega de ' + versoes.entrega + '): ' + versoes.problemas.join(', ') + '.'
+      : 'ARQUIVOS: todos da entrega de ' + versoes.entrega + '.');
+  }
 
   Object.keys(TABELAS).forEach(function (nome) {
     var def = TABELAS[nome];

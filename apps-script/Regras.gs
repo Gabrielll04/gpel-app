@@ -1,3 +1,4 @@
+var VERSAO__REGRAS = '3a407642'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Regras de negócio.
  * Todo cálculo do sistema acontece aqui (e SOMENTE aqui).

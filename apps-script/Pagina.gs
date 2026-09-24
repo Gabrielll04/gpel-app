@@ -1,3 +1,4 @@
+var VERSAO__PAGINA = '21346ede'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Entrega da interface pelo próprio Apps Script.
  *
@@ -32,19 +33,6 @@ function servirInterface_(parametros) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-/* Config.gs pode estar em uma versão mais antiga que este arquivo (acontece
-   ao colar os arquivos um a um no editor). Ler as configurações com typeof
-   evita o "ReferenceError" e faz o aplicativo continuar de pé, com o padrão. */
-function configuracao_(nome, padrao) {
-  try {
-    var global = (typeof globalThis !== 'undefined') ? globalThis : this;
-    var valor = global ? global[nome] : undefined;
-    return (valor === undefined || valor === null) ? padrao : valor;
-  } catch (e) {
-    return padrao;
-  }
-}
-
 /* O arquivo "Interface" tem de ser a página do aplicativo. Se alguém colar
    outro conteúdo nele (um .gs, por exemplo), o navegador mostraria esse texto
    como se fosse a tela — confuso. Melhor recusar e explicar. */
@@ -54,7 +42,7 @@ function pareceAPagina_(texto) {
 
 /** Busca a página: cache -> GitHub -> arquivo colado no projeto. */
 function paginaDoAplicativo_(recarregar) {
-  var endereco = configuracao_('URL_INTERFACE', '');
+  var endereco = typeof URL_INTERFACE !== 'undefined' && URL_INTERFACE ? URL_INTERFACE : '';
   if (endereco) {
     if (!recarregar) {
       var guardada = paginaNoCache_();
@@ -105,7 +93,8 @@ function paginaNoCache_() {
 function guardarPaginaNoCache_(html) {
   try {
     var cache = CacheService.getScriptCache();
-    var segundos = Math.max(60, configuracao_('MINUTOS_DE_CACHE_DA_PAGINA', 10) * 60);
+    var minutos = typeof MINUTOS_DE_CACHE_DA_PAGINA !== 'undefined' ? MINUTOS_DE_CACHE_DA_PAGINA : 10;
+    var segundos = Math.max(60, minutos * 60);
     var quantos = Math.ceil(html.length / TAMANHO_DO_PEDACO);
     var valores = { interface_pedacos: String(quantos) };
     for (var i = 0; i < quantos; i++) {

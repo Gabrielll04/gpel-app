@@ -833,6 +833,80 @@ teste('contagem de inventário não mexe no saldo até ser aprovada', () => {
   conferirIgual(ajuste['Origem'], 'Inventário -', 'e a diferença fica registrada como movimentação');
 });
 
+/* ------------------------------------------ Arquivos da mesma entrega */
+
+console.log('\nArquivos da mesma entrega (marca de versão)');
+
+/** Tira a marca da primeira linha: é como fica um arquivo de entrega antiga. */
+function comoArquivoAntigo(nome) {
+  return (arquivo, codigo) => (arquivo === nome ? codigo.replace(/^var VERSAO__[^\n]*\n/, '') : codigo);
+}
+
+teste('com todos os arquivos da mesma entrega, nada é bloqueado', () => {
+  const { contexto: g } = carregarBackend();
+  g.instalarPlanilha();
+  conferirIgual(g.estadoDasVersoes_().problemas.length, 0, 'sem problemas');
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'ping' } }).getContent());
+  conferir(resposta.ok, 'servidor responde');
+});
+
+teste('Estoque.gs de entrega antiga: o servidor recusa e diz qual arquivo colar', () => {
+  // O incidente real: Estoque.gs antigo junto com os demais arquivos novos.
+  const { contexto: g } = carregarBackend({ ajustarArquivo: comoArquivoAntigo('Estoque.gs') });
+  g.instalarPlanilha();
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'tudo' } }).getContent());
+  conferirIgual(resposta.ok, false, 'leitura recusada');
+  conferir(resposta.erro.indexOf('Estoque.gs') !== -1, 'nomeia o arquivo: ' + resposta.erro);
+  conferir(resposta.erro.indexOf('Codigo.gs') === -1, 'e não acusa os arquivos certos');
+});
+
+teste('gravação também é recusada com arquivo desencontrado', () => {
+  const { contexto: g } = carregarBackend({ ajustarArquivo: comoArquivoAntigo('Planilha.gs') });
+  g.instalarPlanilha();
+  const resposta = JSON.parse(g.doPost({ postData: { contents: JSON.stringify({
+    action: 'criar', table: 'CAD_CLIENTES', valores: { 'Código': 'X', 'Razão Social': 'Y' }
+  }) } }).getContent());
+  conferirIgual(resposta.ok, false, 'gravação recusada');
+  conferir(resposta.erro.indexOf('Planilha.gs') !== -1, 'nomeia o arquivo');
+});
+
+teste('carga de teste não começa com arquivo desencontrado (não deixa nada pela metade)', () => {
+  const { contexto: g } = carregarBackend({ ajustarArquivo: comoArquivoAntigo('Estoque.gs') });
+  g.instalarPlanilha();
+  esperarErro(() => g.carregarDadosDeTeste(), 'Estoque.gs');
+  conferirIgual(g.listar('CAD_CLIENTES').length, 0, 'nenhum cadastro criado');
+  conferirIgual(g.listar('INVENTARIO').length, 0, 'nenhum inventário criado');
+});
+
+teste('sem o Versoes.gs, o aviso diz que ele falta', () => {
+  const { contexto: g } = carregarBackend({ ajustarArquivo: (a, c) => (a === 'Versoes.gs' ? null : c) });
+  g.instalarPlanilha();
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'ping' } }).getContent());
+  conferirIgual(resposta.ok, false, 'recusado');
+  conferir(resposta.erro.indexOf('Falta o arquivo Versoes.gs') !== -1, 'mensagem clara');
+});
+
+teste('DadosDeTeste.gs é opcional: sem ele o aplicativo funciona', () => {
+  const { contexto: g } = carregarBackend({ ajustarArquivo: (a, c) => (a === 'DadosDeTeste.gs' ? null : c) });
+  g.instalarPlanilha();
+  const resposta = JSON.parse(g.doGet({ parameter: { action: 'ping' } }).getContent());
+  conferir(resposta.ok, 'servidor responde sem o arquivo de teste');
+});
+
+teste('o diagnóstico aponta o arquivo desatualizado', () => {
+  const { contexto: g } = carregarBackend({ ajustarArquivo: comoArquivoAntigo('Estoque.gs') });
+  g.instalarPlanilha();
+  const relatorio = g.diagnosticarPlanilha();
+  conferir(relatorio.indexOf('ARQUIVOS DESATUALIZADOS') !== -1 && relatorio.indexOf('Estoque.gs') !== -1, 'relatório aponta Estoque.gs');
+});
+
+teste('chamada antiga passando a aba em vez do nome não derruba mais', () => {
+  const { contexto: g, planilha } = carregarBackend();
+  g.instalarPlanilha();
+  const aba = planilha.getSheetByName('INVENTARIO');
+  conferir(g.cabecalhoDe_(aba).indexOf('Contagem Física') !== -1, 'cabecalhoDe_ aceita a aba');
+});
+
 /* ---------------------------------------------------------------- API */
 
 console.log('\nAPI');

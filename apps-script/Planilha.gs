@@ -1,3 +1,4 @@
+var VERSAO__PLANILHA = 'c99ef486'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Acesso genérico à planilha.
  * Nenhuma regra de negócio aqui: apenas ler, criar, atualizar e excluir linhas.
@@ -258,6 +259,8 @@ function nomesAceitos_(def) {
 
 /** Colunas da tabela, com os nomes usados pelo sistema. */
 function cabecalhoDe_(nomeTabela) {
+  // Versões antigas chamavam passando a aba em vez do nome: aceita as duas.
+  if (nomeTabela && typeof nomeTabela.getName === 'function') nomeTabela = nomeTabela.getName();
   return estruturaDe_(nomeTabela).colunas;
 }
 

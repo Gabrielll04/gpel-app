@@ -290,6 +290,21 @@ node ferramentas/empacotar.js     # gera apps-script/Interface.html
 `Interface.html` é gerado — não edite por lá, senão a mudança se perde na próxima geração.
 `npm test` avisa se ele estiver atrasado em relação a `web/`.
 
+### Marca de versão (arquivos da mesma entrega)
+
+Cada `.gs` traz na primeira linha uma marca tirada do próprio conteúdo, e o `Versoes.gs`
+(gerado) diz quais marcas formam uma entrega completa. Se um arquivo colado no editor for de
+outra entrega, **o servidor recusa trabalhar e diz qual arquivo está desatualizado** — em vez
+de quebrar no meio de uma gravação. Arquivo que não mudou mantém a marca, então o empacotador
+lista exatamente o que precisa ser colado:
+
+```
+Marcas de versão atualizadas. Arquivos para colar no Apps Script: Estoque.gs, Versoes.gs
+```
+
+Cole sempre o `Versoes.gs` junto com os arquivos listados. As marcas são gravadas pelo
+empacotador: não edite a primeira linha dos `.gs` nem o `Versoes.gs` na mão.
+
 A partir daí há dois caminhos para levar isso até o Google.
 
 ### Caminho curto: um comando (clasp)
@@ -332,6 +347,11 @@ tiverem mudado. Depois, **Implantar → Gerenciar implantações → editar → 
 para a tela de login, que não traz cabeçalho de CORS. Um site de fora não consegue fazer login
 por você. Abra o aplicativo pela URL que termina em `/exec`. Quem tiver o atalho antigo no
 celular vê uma tela explicando isso, com um botão que leva ao endereço certo.
+
+**"Os arquivos do Apps Script são de entregas diferentes".**
+Algum arquivo colado no editor é de uma versão anterior. A mensagem diz qual. Cole a versão
+atual dele (e o `Versoes.gs`) e publique uma nova versão. O `diagnosticarPlanilha` também
+mostra essa conferência na primeira linha do relatório.
 
 **A aba ESTOQUE_ATUAL ficou sem cabeçalho.**
 Versões antigas do código limpavam a aba a partir da segunda linha e apagavam o cabeçalho de
@@ -388,6 +408,8 @@ trocar o atalho.
 | `Config.gs` | Planilha, tabelas, colunas, listas fixas, nomes equivalentes de coluna e **quem pode entrar**. |
 | `Acesso.gs` | Identifica a conta logada e barra quem não está na lista. |
 | `Pagina.gs` | Entrega a página do aplicativo e faz a ponte com ela. |
+| `DadosDeTeste.gs` | Carga e limpeza do cenário de teste. Opcional. |
+| `Versoes.gs` | **Gerado.** Confere se todos os arquivos são da mesma entrega. |
 | `Interface.html` | **Gerado** por `ferramentas/empacotar.js`. Não editar. |
 | `Planilha.gs` | Ler e gravar linhas. Sem regra de negócio. |
 | `Regras.gs` | Validação e **todos** os cálculos. |

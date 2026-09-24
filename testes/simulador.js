@@ -211,6 +211,11 @@ function carregarBackend(opcoes) {
   const arquivos = fs.readdirSync(pasta).filter((a) => a.endsWith('.gs')).sort();
   ['Config.gs'].concat(arquivos.filter((a) => a !== 'Config.gs')).forEach((arquivo) => {
     let codigo = fs.readFileSync(path.join(pasta, arquivo), 'utf8');
+    // Simula o que foi (ou não foi) colado no editor: devolver null omite o arquivo.
+    if (opcoes.ajustarArquivo) {
+      codigo = opcoes.ajustarArquivo(arquivo, codigo);
+      if (codigo === null) return;
+    }
     // Simula o Config.gs desatualizado de quem cola os arquivos um a um.
     if (arquivo === 'Config.gs' && opcoes.configAntigo) {
       codigo = removerVariaveis(codigo, opcoes.configAntigo);

@@ -1,3 +1,4 @@
+var VERSAO__AUTOMACOES = 'd3d750a6'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Automações.
  *

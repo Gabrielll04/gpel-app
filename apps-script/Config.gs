@@ -1,3 +1,4 @@
+var VERSAO__CONFIG = '6df8b282'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Configuração central do backend (Google Apps Script).
  *

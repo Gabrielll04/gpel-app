@@ -3180,6 +3180,12 @@ GPEL.rotas = (function () {
     if (/Ação desconhecida/i.test(texto)) {
       return 'O Codigo.gs publicado está desatualizado: publique uma nova versão.';
     }
+    if (/entregas diferentes/i.test(texto)) {
+      return 'Algum arquivo colado no Apps Script ficou de uma versão anterior. A mensagem acima diz qual: cole a versão atual dele e publique uma nova versão.';
+    }
+    if (/Falta o arquivo Versoes\.gs/i.test(texto)) {
+      return 'O arquivo Versoes.gs não está no Apps Script. Ele faz parte da entrega e confere se os demais arquivos são da mesma versão.';
+    }
     if (/não tem a função/i.test(texto)) {
       return 'O arquivo Pagina.gs não está na versão publicada do script. Confira se ele existe no projeto (é onde ficam apiGet e apiPost) e publique uma nova versão.';
     }

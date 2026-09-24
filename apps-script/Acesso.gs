@@ -1,3 +1,4 @@
+var VERSAO__ACESSO = '3140da2e'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Controle de acesso.
  *

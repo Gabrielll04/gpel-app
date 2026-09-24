@@ -1,3 +1,4 @@
+var VERSAO__DADOSDETESTE = 'd8c6eb3e'; // marca de versão, gerada por ferramentas/empacotar.js
 /**
  * GPEL - Dados de teste.
  *
@@ -82,6 +83,7 @@ var MINIMOS_TESTE = {
 /* ---------------------------------------------------------------------- */
 
 function carregarDadosDeTeste() {
+  conferirEntrega_(); // arquivo desencontrado aqui deixaria a carga pela metade
   if (estadoDoTeste_()) {
     throw new Error('Os dados de teste já estão carregados. Rode apagarDadosDeTeste antes de carregar de novo.');
   }
@@ -270,6 +272,7 @@ function carregarDadosDeTeste() {
 /* ---------------------------------------------------------------------- */
 
 function apagarDadosDeTeste() {
+  conferirEntrega_();
   var estado = estadoDoTeste_();
   if (!estado) return 'Não há dados de teste carregados.';
 
